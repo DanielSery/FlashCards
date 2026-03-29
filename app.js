@@ -19,6 +19,7 @@ function load() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) state.decks = JSON.parse(raw);
   } catch { state.decks = []; }
+  state.studySide = localStorage.getItem('flashcards_side') || 'front';
 }
 
 // ── Helpers ──
@@ -180,6 +181,9 @@ function startStudy() {
   $('#card-container').style.display = '';
   $('#study-side-picker').style.display = '';
   $('#study-progress').style.display = '';
+  document.querySelectorAll('.side-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.side === state.studySide);
+  });
   showView('study');
   showStudyCard();
 }
@@ -908,6 +912,7 @@ function init() {
       document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       state.studySide = btn.dataset.side;
+      localStorage.setItem('flashcards_side', state.studySide);
       if (viewStudy.classList.contains('active')) showStudyCard();
     };
   });
