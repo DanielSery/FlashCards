@@ -104,8 +104,7 @@ function renderDecks() {
           <div class="deck-name">${esc(deck.name)}</div>
           <div class="deck-count">${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}</div>
         </div>
-        <button class="btn-deck-delete" aria-label="Delete deck"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
-        <span style="font-size:1.3rem;color:var(--text-lighter)">&#8250;</span>`;
+        <button class="btn-deck-delete" aria-label="Delete deck"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>`;
       li.querySelector('.btn-deck-delete').onclick = (e) => {
         e.stopPropagation();
         if (confirm(`Delete "${deck.name}" and all its cards?`)) {
