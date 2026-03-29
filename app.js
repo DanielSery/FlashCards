@@ -4,6 +4,7 @@ let state = {
   currentDeckId: null,
   studyIndex: 0,
   studyOrder: [],
+  studySide: 'front', // 'front' | 'back' | 'random'
 };
 
 const STORAGE_KEY = 'flashcards_data';
@@ -99,11 +100,20 @@ function renderDecks() {
     state.decks.forEach(deck => {
       const li = document.createElement('li');
       li.innerHTML = `
-        <div>
+        <div style="min-width:0;flex:1">
           <div class="deck-name">${esc(deck.name)}</div>
           <div class="deck-count">${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}</div>
         </div>
+        <button class="btn-deck-delete" aria-label="Delete deck">&times;</button>
         <span style="font-size:1.3rem;color:var(--text-light)">&#8250;</span>`;
+      li.querySelector('.btn-deck-delete').onclick = (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete "${deck.name}" and all its cards?`)) {
+          state.decks = state.decks.filter(d => d.id !== deck.id);
+          if (state.currentDeckId === deck.id) state.currentDeckId = null;
+          save(); renderDecks();
+        }
+      };
       li.onclick = () => { state.currentDeckId = deck.id; renderCards(); showView('cards'); };
       deckListEl.appendChild(li);
 
@@ -165,6 +175,12 @@ function startStudy() {
   state.studyOrder = [...Array(deck.cards.length).keys()];
   shuffleArray(state.studyOrder);
   state.studyIndex = 0;
+  state.studyKnown = [];
+  state.studyUnknown = [];
+  $('#study-summary').style.display = 'none';
+  $('#card-container').style.display = '';
+  $('#study-side-picker').style.display = '';
+  $('#study-progress').style.display = '';
   showView('study');
   showStudyCard();
 }
@@ -172,30 +188,102 @@ function startStudy() {
 function showStudyCard() {
   const deck = currentDeck();
   if (!deck) return;
-  const total = deck.cards.length;
+  const total = state.studyOrder.length;
   const idx = state.studyOrder[state.studyIndex];
   const card = deck.cards[idx];
   cardFrontText.textContent = card.front;
   cardBackText.textContent = card.back;
-  flashcard.classList.remove('flipped');
+
+  const showBack = state.studySide === 'back' ||
+    (state.studySide === 'random' && Math.random() < 0.5);
+  if (showBack) flashcard.classList.add('flipped');
+  else flashcard.classList.remove('flipped');
+
+  // Reset swipe position
+  flashcard.style.transform = '';
+  flashcard.style.opacity = '';
+  $('#swipe-hint-left').style.opacity = '0';
+  $('#swipe-hint-right').style.opacity = '0';
+
   studyCounter.textContent = `${state.studyIndex + 1} / ${total}`;
   progressFill.style.width = `${((state.studyIndex + 1) / total) * 100}%`;
 }
 
-function studyNext() {
+function studyAnswer(known) {
   const deck = currentDeck();
   if (!deck) return;
-  if (state.studyIndex < deck.cards.length - 1) {
-    state.studyIndex++;
-    showStudyCard();
-  }
+  const idx = state.studyOrder[state.studyIndex];
+  const card = deck.cards[idx];
+  if (known) state.studyKnown.push(card);
+  else state.studyUnknown.push(card);
+
+  // Animate card flying off
+  const dir = known ? 1 : -1;
+  flashcard.style.transition = 'transform .3s ease, opacity .3s ease';
+  flashcard.style.transform = `translateX(${dir * 400}px) rotate(${dir * 20}deg)`;
+  flashcard.style.opacity = '0';
+
+  setTimeout(() => {
+    flashcard.style.transition = '';
+    if (state.studyIndex < state.studyOrder.length - 1) {
+      state.studyIndex++;
+      showStudyCard();
+    } else {
+      showStudySummary();
+    }
+  }, 300);
 }
 
-function studyPrev() {
-  if (state.studyIndex > 0) {
-    state.studyIndex--;
-    showStudyCard();
+function showStudySummary() {
+  const total = state.studyKnown.length + state.studyUnknown.length;
+  $('#card-container').style.display = 'none';
+  $('#study-side-picker').style.display = 'none';
+  $('#study-progress').style.display = 'none';
+
+  const summary = $('#study-summary');
+  summary.style.display = '';
+
+  const pct = total > 0 ? Math.round((state.studyKnown.length / total) * 100) : 0;
+  $('#summary-stats').innerHTML = `
+    <div class="summary-row summary-known"><span>&#10003; Known</span><span>${state.studyKnown.length}</span></div>
+    <div class="summary-row summary-unknown"><span>&#10007; Still learning</span><span>${state.studyUnknown.length}</span></div>
+    <div class="summary-row"><span>Score</span><span>${pct}%</span></div>`;
+
+  const actions = $('#summary-actions');
+  actions.innerHTML = '';
+
+  if (state.studyUnknown.length > 0) {
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'btn-primary';
+    retryBtn.textContent = `Retry missed (${state.studyUnknown.length})`;
+    retryBtn.onclick = () => {
+      const deck = currentDeck();
+      if (!deck) return;
+      state.studyOrder = state.studyUnknown.map(c => deck.cards.indexOf(c));
+      shuffleArray(state.studyOrder);
+      state.studyIndex = 0;
+      state.studyKnown = [];
+      state.studyUnknown = [];
+      summary.style.display = 'none';
+      $('#card-container').style.display = '';
+          $('#study-side-picker').style.display = '';
+      $('#study-progress').style.display = '';
+      showStudyCard();
+    };
+    actions.appendChild(retryBtn);
   }
+
+  const againBtn = document.createElement('button');
+  againBtn.className = 'btn-secondary';
+  againBtn.textContent = 'Study all again';
+  againBtn.onclick = startStudy;
+  actions.appendChild(againBtn);
+
+  const doneBtn = document.createElement('button');
+  doneBtn.className = 'btn-secondary';
+  doneBtn.textContent = 'Done';
+  doneBtn.onclick = () => showView('cards');
+  actions.appendChild(doneBtn);
 }
 
 function studyShuffle() {
@@ -203,6 +291,8 @@ function studyShuffle() {
   if (!deck) return;
   shuffleArray(state.studyOrder);
   state.studyIndex = 0;
+  state.studyKnown = [];
+  state.studyUnknown = [];
   showStudyCard();
 }
 
@@ -692,25 +782,73 @@ function closeMenu() {
   menuOverlay.classList.remove('open');
 }
 
-// ── Swipe support ──
-let touchStartX = 0;
-let touchStartY = 0;
+// ── Swipe support (drag card left/right) ──
+let swipeDragging = false;
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeDx = 0;
+const SWIPE_THRESHOLD = 80;
 
 function setupSwipe() {
-  const container = $('#card-container');
-  container.addEventListener('touchstart', e => {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, { passive: true });
+  const card = flashcard;
 
-  container.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) {
-      if (dx < 0) studyNext();
-      else studyPrev();
+  function onStart(x, y) {
+    if (!viewStudy.classList.contains('active')) return;
+    swipeDragging = true;
+    swipeDx = 0;
+    swipeStartX = x;
+    swipeStartY = y;
+    card.style.transition = '';
+  }
+
+  function onMove(x) {
+    if (!swipeDragging) return;
+    swipeDx = x - swipeStartX;
+    const rotate = swipeDx * 0.08;
+    card.style.transform = `translateX(${swipeDx}px) rotate(${rotate}deg)`;
+
+    const progress = Math.min(Math.abs(swipeDx) / SWIPE_THRESHOLD, 1);
+    if (swipeDx > 0) {
+      $('#swipe-hint-right').style.opacity = progress;
+      $('#swipe-hint-left').style.opacity = '0';
+    } else if (swipeDx < 0) {
+      $('#swipe-hint-left').style.opacity = progress;
+      $('#swipe-hint-right').style.opacity = '0';
     }
+  }
+
+  function onEnd() {
+    if (!swipeDragging) return;
+    swipeDragging = false;
+    if (Math.abs(swipeDx) >= SWIPE_THRESHOLD) {
+      studyAnswer(swipeDx > 0);
+    } else {
+      // Snap back
+      card.style.transition = 'transform .2s ease';
+      card.style.transform = '';
+      $('#swipe-hint-left').style.opacity = '0';
+      $('#swipe-hint-right').style.opacity = '0';
+    }
+  }
+
+  // Touch events
+  card.addEventListener('touchstart', e => {
+    onStart(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
+  card.addEventListener('touchmove', e => {
+    onMove(e.touches[0].clientX);
+  }, { passive: true });
+  card.addEventListener('touchend', () => onEnd(), { passive: true });
+
+  // Mouse events (desktop)
+  card.addEventListener('mousedown', e => {
+    e.preventDefault();
+    onStart(e.clientX, e.clientY);
+  });
+  document.addEventListener('mousemove', e => {
+    if (swipeDragging) onMove(e.clientX);
+  });
+  document.addEventListener('mouseup', () => onEnd());
 }
 
 // ── Tap deck title to edit ──
@@ -765,12 +903,19 @@ function init() {
   $('#menu-import-deck').onclick = () => { closeMenu(); openScanner(); };
   $('#menu-create-mobile').onclick = () => { closeMenu(); openMobileDeckCreator(); };
 
+  // Study side picker
+  document.querySelectorAll('.side-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.studySide = btn.dataset.side;
+      if (viewStudy.classList.contains('active')) showStudyCard();
+    };
+  });
+
   // Study
   btnStudy.onclick = startStudy;
-  flashcard.onclick = () => flashcard.classList.toggle('flipped');
-  $('#btn-next').onclick = studyNext;
-  $('#btn-prev').onclick = studyPrev;
-  $('#btn-shuffle').onclick = studyShuffle;
+  flashcard.onclick = () => { if (!swipeDragging && Math.abs(swipeDx) < 5) flashcard.classList.toggle('flipped'); };
 
   // Creator modal
   $('#creator-form').onsubmit = handleCreatorSave;
@@ -796,8 +941,9 @@ function init() {
   // Keyboard navigation in study
   document.addEventListener('keydown', e => {
     if (!viewStudy.classList.contains('active')) return;
-    if (e.key === 'ArrowLeft') studyPrev();
-    else if (e.key === 'ArrowRight') studyNext();
+    if ($('#study-summary').style.display !== 'none') return;
+    if (e.key === 'ArrowLeft') studyAnswer(false);
+    else if (e.key === 'ArrowRight') studyAnswer(true);
     else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flashcard.classList.toggle('flipped'); }
   });
 }

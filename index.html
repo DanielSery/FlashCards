@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#6c5ce7">
+  <meta name="theme-color" content="#7c3aed">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Simple flashcard app for studying on the go">
@@ -44,6 +44,8 @@
       <div id="progress-bar"><div id="progress-fill"></div></div>
     </div>
     <div id="card-container">
+      <div id="swipe-hint-left" class="swipe-hint swipe-hint-left">&#10007;</div>
+      <div id="swipe-hint-right" class="swipe-hint swipe-hint-right">&#10003;</div>
       <div id="flashcard" class="flashcard">
         <div class="flashcard-inner">
           <div class="flashcard-front">
@@ -54,12 +56,18 @@
           </div>
         </div>
       </div>
-      <p id="tap-hint">Tap card to flip</p>
+      <p id="tap-hint">Tap to flip &middot; Swipe to answer</p>
     </div>
-    <div id="study-controls">
-      <button id="btn-prev" class="btn-round" aria-label="Previous">&#8592;</button>
-      <button id="btn-shuffle" class="btn-round" aria-label="Shuffle">&#8645;</button>
-      <button id="btn-next" class="btn-round" aria-label="Next">&#8594;</button>
+    <div id="study-side-picker">
+      <button class="side-btn active" data-side="front">Front first</button>
+      <button class="side-btn" data-side="back">Back first</button>
+      <button class="side-btn" data-side="random">Random</button>
+    </div>
+    <!-- Study summary (shown at end) -->
+    <div id="study-summary" style="display:none">
+      <h2>Round complete!</h2>
+      <div id="summary-stats"></div>
+      <div id="summary-actions"></div>
     </div>
   </section>
 
