@@ -146,7 +146,7 @@ function renderCards() {
           <div style="font-weight:600">${esc(card.front)}</div>
           <div class="card-preview">${esc(card.back)}</div>
         </div>
-        <button class="btn-card-edit" aria-label="Edit card">&#9998;</button>`;
+        <button class="btn-card-edit" aria-label="Edit card"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button>`;
       li.querySelector('.btn-card-edit').onclick = (e) => {
         e.stopPropagation();
         openCardModal(card);
@@ -747,7 +747,7 @@ function init() {
 
   // Deck list buttons
   $('#btn-create-deck').onclick = () => openCreator();
-  $('#btn-import-deck').onclick = () => openScanner();
+  $('#btn-create-deck-mobile').onclick = () => openMobileDeckCreator();
   $('#btn-create-fab').onclick = () => isMobile() ? openMobileDeckCreator() : openCreator();
   $('#btn-scan-fab').onclick = () => openScanner();
 
