@@ -401,6 +401,19 @@ async function uploadDeck(deck) {
   const payload = { name: deck.name, cards: deck.cards.map(c => [c.front, c.back]) };
   const body = JSON.stringify(payload);
 
+  // Try npoint.io (CORS-friendly)
+  try {
+    const res = await fetch('https://api.npoint.io/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+    if (res.ok) {
+      const result = await res.json();
+      if (result && result.id) return { provider: 'npoint', id: result.id };
+    }
+  } catch { /* try next */ }
+
   // Try jsonblob.com
   try {
     const res = await fetch('https://jsonblob.com/api/jsonBlob', {
@@ -412,19 +425,6 @@ async function uploadDeck(deck) {
       const location = res.headers.get('Location') || '';
       const blobId = location.split('/').pop();
       if (blobId) return { provider: 'jsonblob', id: blobId };
-    }
-  } catch { /* try next */ }
-
-  // Try npoint.io
-  try {
-    const res = await fetch('https://api.npoint.io/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
-    if (res.ok) {
-      const result = await res.json();
-      if (result && result.id) return { provider: 'npoint', id: result.id };
     }
   } catch { /* try next */ }
 

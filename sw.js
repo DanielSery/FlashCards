@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flashcards-v4';
+const CACHE_NAME = 'flashcards-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -27,8 +27,11 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Fetch: cache-first
+// Fetch: cache-first for same-origin GET only, pass through everything else
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) {
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
