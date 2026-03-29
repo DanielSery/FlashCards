@@ -70,7 +70,7 @@ function showView(name) {
     viewDecks.classList.add('active');
     headerTitle.textContent = 'FlashCards';
     btnAdd.innerHTML = '&#43;';
-    btnAdd.onclick = () => openCreator();
+    btnAdd.onclick = () => isMobile() ? openMobileDeckCreator() : openCreator();
   } else if (name === 'cards') {
     viewCards.classList.add('active');
     const deck = currentDeck();
@@ -117,6 +117,14 @@ function renderDecks() {
 }
 
 // ── Render cards ──
+function createAddCardItem() {
+  const li = document.createElement('li');
+  li.className = 'add-card-item';
+  li.innerHTML = `<span class="add-card-icon">&#43;</span> Add card`;
+  li.onclick = () => openCardModal();
+  return li;
+}
+
 function renderCards() {
   const deck = currentDeck();
   cardListEl.innerHTML = '';
@@ -128,16 +136,25 @@ function renderCards() {
     emptyCards.style.display = 'none';
     cardListEl.style.display = '';
     btnStudy.style.display = '';
+
+    cardListEl.appendChild(createAddCardItem());
+
     deck.cards.forEach(card => {
       const li = document.createElement('li');
       li.innerHTML = `
-        <div style="min-width:0">
+        <div style="min-width:0;flex:1">
           <div style="font-weight:600">${esc(card.front)}</div>
           <div class="card-preview">${esc(card.back)}</div>
-        </div>`;
-      li.onclick = () => openCardModal(card);
+        </div>
+        <button class="btn-card-edit" aria-label="Edit card">&#9998;</button>`;
+      li.querySelector('.btn-card-edit').onclick = (e) => {
+        e.stopPropagation();
+        openCardModal(card);
+      };
       cardListEl.appendChild(li);
     });
+
+    cardListEl.appendChild(createAddCardItem());
   }
 }
 
@@ -213,6 +230,20 @@ function openDeckEditModal(deck) {
   openModal();
 }
 
+function openMobileDeckCreator() {
+  modalMode = 'deck-new';
+  editTarget = null;
+  modalTitle.textContent = 'New Deck';
+  labelFront.textContent = 'Deck Name';
+  inputFront.value = '';
+  inputFront.setAttribute('rows', '1');
+  inputFront.placeholder = 'e.g. Spanish Vocab';
+  labelBack.style.display = 'none';
+  inputBack.style.display = 'none';
+  btnModalDelete.style.display = 'none';
+  openModal();
+}
+
 function openCardModal(card) {
   modalMode = card ? 'card-edit' : 'card-new';
   editTarget = card || null;
@@ -239,11 +270,22 @@ function closeModal() {
   modalOverlay.classList.remove('open');
   inputFront.value = '';
   inputBack.value = '';
+  inputFront.placeholder = '';
 }
 
 function handleSave(e) {
   e.preventDefault();
-  if (modalMode === 'deck-edit') {
+  if (modalMode === 'deck-new') {
+    const name = inputFront.value.trim();
+    if (!name) return;
+    const deck = { id: uid(), name, cards: [] };
+    state.decks.push(deck);
+    state.currentDeckId = deck.id;
+    save(); renderDecks(); renderCards();
+    closeModal();
+    showView('cards');
+    return;
+  } else if (modalMode === 'deck-edit') {
     const name = inputFront.value.trim();
     if (!name || !editTarget) return;
     editTarget.name = name;
@@ -706,7 +748,7 @@ function init() {
   // Deck list buttons
   $('#btn-create-deck').onclick = () => openCreator();
   $('#btn-import-deck').onclick = () => openScanner();
-  $('#btn-create-fab').onclick = () => openCreator();
+  $('#btn-create-fab').onclick = () => isMobile() ? openMobileDeckCreator() : openCreator();
   $('#btn-scan-fab').onclick = () => openScanner();
 
   // QR Scanner
@@ -721,6 +763,7 @@ function init() {
   // Side menu
   $('#menu-create-deck').onclick = () => { closeMenu(); openCreator(); };
   $('#menu-import-deck').onclick = () => { closeMenu(); openScanner(); };
+  $('#menu-create-mobile').onclick = () => { closeMenu(); openMobileDeckCreator(); };
 
   // Study
   btnStudy.onclick = startStudy;

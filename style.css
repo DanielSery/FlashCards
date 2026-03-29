@@ -152,6 +152,33 @@ header h1 { font-size: 1.15rem; font-weight: 600; }
 .card-list .deck-count { color: var(--text-light); font-size: .9rem; }
 .card-list .card-preview { color: var(--text-light); font-size: .85rem; margin-top: 2px; }
 
+/* ── Edit button on card items ── */
+.btn-card-edit {
+  background: none; border: 2px solid #dfe6e9;
+  width: 40px; height: 40px; min-width: 40px;
+  border-radius: 50%; font-size: 1.1rem;
+  color: var(--text-light); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, border-color .15s;
+  margin-left: 12px;
+}
+.btn-card-edit:active { background: #f0edff; border-color: var(--primary); color: var(--primary); }
+
+/* ── Add-card item (top & bottom of card list) ── */
+.add-card-item {
+  border: 2px dashed #dfe6e9 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-light);
+  font-weight: 600;
+  font-size: 1rem;
+  justify-content: center !important;
+  gap: 8px;
+  transition: border-color .15s, color .15s;
+}
+.add-card-item:active { border-color: var(--primary) !important; color: var(--primary); }
+.add-card-icon { font-size: 1.3rem; line-height: 1; }
+
 /* ── Flashcard ── */
 #card-container {
   display: flex; flex-direction: column; align-items: center;
