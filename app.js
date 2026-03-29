@@ -70,7 +70,7 @@ function showView(name) {
     viewDecks.classList.add('active');
     headerTitle.textContent = 'FlashCards';
     btnAdd.innerHTML = '&#43;';
-    btnAdd.onclick = () => isMobile() ? promptImport() : openCreator();
+    btnAdd.onclick = () => openCreator();
   } else if (name === 'cards') {
     viewCards.classList.add('active');
     const deck = currentDeck();
@@ -422,7 +422,7 @@ function shareDeck() {
   qrOverlay.onclick = closeQR;
 }
 
-// ── Mobile: Import from URL (prompt or auto) ──
+// ── Import from pasted link ──
 function promptImport() {
   const url = prompt('Paste the deck import link:');
   if (!url) return;
@@ -437,6 +437,77 @@ function promptImport() {
   } catch {
     showToast('Invalid link');
   }
+}
+
+// ── QR Scanner ──
+let scannerStream = null;
+let scannerInterval = null;
+
+function openScanner() {
+  const scannerModal = $('#scanner-modal');
+  const scannerOverlay = $('#scanner-overlay');
+  const video = $('#scanner-video');
+  const status = $('#scanner-status');
+
+  scannerModal.classList.add('open');
+  scannerOverlay.classList.add('open');
+  status.textContent = 'Starting camera…';
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(stream => {
+      scannerStream = stream;
+      video.srcObject = stream;
+      status.textContent = 'Point your camera at a FlashCards QR code';
+      startQRDetection(video, status);
+    })
+    .catch(() => {
+      status.textContent = 'Camera not available. Use "Paste Link" instead.';
+    });
+}
+
+function startQRDetection(video, status) {
+  if (!('BarcodeDetector' in window)) {
+    // Fallback: try canvas-based detection or just show paste option
+    status.textContent = 'QR scanning not supported on this browser. Use "Paste Link".';
+    return;
+  }
+  const detector = new BarcodeDetector({ formats: ['qr_code'] });
+  scannerInterval = setInterval(async () => {
+    if (video.readyState < 2) return;
+    try {
+      const codes = await detector.detect(video);
+      if (codes.length > 0) {
+        const url = codes[0].rawValue;
+        handleScannedURL(url);
+      }
+    } catch { /* ignore detection errors */ }
+  }, 300);
+}
+
+function handleScannedURL(url) {
+  try {
+    const u = new URL(url);
+    const data = u.searchParams.get('import');
+    if (data) {
+      closeScanner();
+      importData(data);
+    }
+  } catch { /* not a valid URL, keep scanning */ }
+}
+
+function closeScanner() {
+  const scannerModal = $('#scanner-modal');
+  const scannerOverlay = $('#scanner-overlay');
+  const video = $('#scanner-video');
+
+  if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
+  if (scannerStream) {
+    scannerStream.getTracks().forEach(t => t.stop());
+    scannerStream = null;
+  }
+  video.srcObject = null;
+  scannerModal.classList.remove('open');
+  scannerOverlay.classList.remove('open');
 }
 
 function importFromURL() {
@@ -561,7 +632,13 @@ function init() {
   // Deck list buttons
   $('#btn-create-deck').onclick = () => openCreator();
   $('#btn-import-deck').onclick = () => promptImport();
-  $('#btn-import-fab').onclick = () => promptImport();
+  $('#btn-create-fab').onclick = () => openCreator();
+  $('#btn-scan-fab').onclick = () => openScanner();
+
+  // QR Scanner
+  $('#btn-scanner-close').onclick = closeScanner;
+  $('#scanner-overlay').onclick = closeScanner;
+  $('#btn-scanner-paste').onclick = () => { closeScanner(); promptImport(); };
 
   // Card list buttons
   $('#btn-add-first-card').onclick = () => openCardModal();
@@ -593,6 +670,7 @@ function init() {
   // Back navigation
   window.addEventListener('popstate', () => {
     if (modal.classList.contains('open')) { closeModal(); }
+    else if ($('#scanner-modal').classList.contains('open')) { closeScanner(); }
     else if ($('#creator-modal').classList.contains('open')) { closeCreator(); }
     else if (viewStudy.classList.contains('active')) { showView('cards'); }
     else if (viewCards.classList.contains('active')) { showView('decks'); renderDecks(); }

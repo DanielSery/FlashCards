@@ -29,7 +29,12 @@
       <button id="btn-import-deck" class="btn-primary mobile-only">Import Deck</button>
     </div>
     <ul id="deck-list" class="card-list"></ul>
-    <button id="btn-import-fab" class="btn-primary btn-fab mobile-only" aria-label="Import Deck">&#8615; Import</button>
+    <div id="deck-fabs">
+      <button id="btn-scan-fab" class="btn-primary btn-fab-circle" aria-label="Scan QR">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+      </button>
+      <button id="btn-create-fab" class="btn-primary btn-fab-circle btn-fab-large" aria-label="Create Deck">&#43;</button>
+    </div>
   </section>
 
   <!-- Study view -->
@@ -124,6 +129,20 @@
       <div class="modal-actions" style="margin-top:12px">
         <button type="button" id="btn-creator-done" class="btn-primary">Done</button>
       </div>
+    </div>
+  </div>
+
+  <!-- QR Scanner modal -->
+  <div id="scanner-overlay" class="overlay"></div>
+  <div id="scanner-modal" class="modal">
+    <h2>Scan QR Code</h2>
+    <div id="scanner-video-wrap">
+      <video id="scanner-video" playsinline autoplay muted></video>
+    </div>
+    <p id="scanner-status">Point your camera at a FlashCards QR code</p>
+    <div class="modal-actions">
+      <button type="button" id="btn-scanner-paste" class="btn-secondary">Paste Link</button>
+      <button type="button" id="btn-scanner-close" class="btn-secondary">Close</button>
     </div>
   </div>
 
