@@ -201,10 +201,12 @@ function showStudyCard() {
   const idx = state.studyOrder[state.studyIndex];
   const card = deck.cards[idx];
 
-  // Disable flip transition so the correct side shows instantly
+  // Disable all transitions while setting up the new card
   const inner = flashcard.querySelector('.flashcard-inner');
   inner.style.transition = 'none';
+  flashcard.style.transition = 'none';
 
+  // Set the correct side before making visible
   const showBack = state.studySide === 'back' ||
     (state.studySide === 'random' && Math.random() < 0.5);
   if (showBack) flashcard.classList.add('flipped');
@@ -213,12 +215,14 @@ function showStudyCard() {
   cardFrontText.textContent = card.front;
   cardBackText.textContent = card.back;
 
-  // Reset swipe position
+  // Reset swipe position and make visible
   flashcard.style.transform = '';
   flashcard.style.opacity = '';
 
-  // Re-enable flip transition after a frame
-  requestAnimationFrame(() => { inner.style.transition = ''; });
+  // Force reflow so all changes apply instantly, then re-enable transitions
+  flashcard.offsetHeight;
+  inner.style.transition = '';
+  flashcard.style.transition = '';
   $('#swipe-hint-left').style.opacity = '0';
   $('#swipe-hint-right').style.opacity = '0';
 
