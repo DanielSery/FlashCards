@@ -263,8 +263,8 @@ header h1 {
   box-shadow: var(--shadow-lg);
   display: flex; align-items: center; justify-content: center;
   padding: 28px;
-  font-size: 1.3rem;
-  font-weight: 500;
+  font-size: 1.8rem;
+  font-weight: 600;
   text-align: center;
   word-break: break-word;
   overflow-y: auto;

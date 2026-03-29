@@ -200,17 +200,25 @@ function showStudyCard() {
   const total = state.studyOrder.length;
   const idx = state.studyOrder[state.studyIndex];
   const card = deck.cards[idx];
-  cardFrontText.textContent = card.front;
-  cardBackText.textContent = card.back;
+
+  // Disable flip transition so the correct side shows instantly
+  const inner = flashcard.querySelector('.flashcard-inner');
+  inner.style.transition = 'none';
 
   const showBack = state.studySide === 'back' ||
     (state.studySide === 'random' && Math.random() < 0.5);
   if (showBack) flashcard.classList.add('flipped');
   else flashcard.classList.remove('flipped');
 
+  cardFrontText.textContent = card.front;
+  cardBackText.textContent = card.back;
+
   // Reset swipe position
   flashcard.style.transform = '';
   flashcard.style.opacity = '';
+
+  // Re-enable flip transition after a frame
+  requestAnimationFrame(() => { inner.style.transition = ''; });
   $('#swipe-hint-left').style.opacity = '0';
   $('#swipe-hint-right').style.opacity = '0';
 
