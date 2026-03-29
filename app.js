@@ -323,15 +323,18 @@ function handleCreatorSave(e) {
   showCreatorQR(deck);
 }
 
-function showCreatorQR(deck) {
-  const shareUrl = buildShareURL(deck);
-
+async function showCreatorQR(deck) {
   $('#creator-form').style.display = 'none';
   const qrSection = $('#creator-qr-section');
   qrSection.style.display = '';
   $('#creator-title').textContent = `"${deck.name}" created (${deck.cards.length} cards)`;
 
   const qrContainer = $('#creator-qr-container');
+  qrContainer.innerHTML = '<p style="color:var(--text-light)">Uploading deck…</p>';
+  $('#creator-link').value = '';
+
+  const shareUrl = await buildShareURL(deck);
+
   try {
     qrContainer.innerHTML = QR.toSVG(shareUrl, 4, 4);
   } catch {
@@ -384,22 +387,53 @@ function parseCSVLine(line) {
 }
 
 // ── Share URL building ──
-function buildShareURL(deck) {
+function baseAppUrl() {
+  return window.location.href.split('#')[0].split('?')[0];
+}
+
+function buildInlineShareURL(deck) {
   const payload = JSON.stringify({ name: deck.name, cards: deck.cards.map(c => [c.front, c.back]) });
   const encoded = btoa(unescape(encodeURIComponent(payload)));
-  const baseUrl = window.location.href.split('#')[0].split('?')[0];
-  return baseUrl + '?import=' + encodeURIComponent(encoded);
+  return baseAppUrl() + '?import=' + encodeURIComponent(encoded);
+}
+
+async function uploadDeck(deck) {
+  const payload = { name: deck.name, cards: deck.cards.map(c => [c.front, c.back]) };
+  const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  const location = res.headers.get('Location') || '';
+  const blobId = location.split('/').pop();
+  if (!blobId) throw new Error('No blob ID');
+  return baseAppUrl() + '?blob=' + blobId;
+}
+
+async function buildShareURL(deck) {
+  try {
+    return await uploadDeck(deck);
+  } catch {
+    return buildInlineShareURL(deck);
+  }
 }
 
 // ── Share existing deck as QR ──
-function shareDeck() {
+async function shareDeck() {
   const deck = currentDeck();
   if (!deck || deck.cards.length === 0) return;
-  const shareUrl = buildShareURL(deck);
 
   const qrModal = $('#qr-modal');
   const qrOverlay = $('#qr-overlay');
   const qrContainer = $('#qr-container');
+
+  qrContainer.innerHTML = '<p style="color:var(--text-light)">Uploading deck…</p>';
+  $('#qr-link').value = '';
+  qrModal.classList.add('open');
+  qrOverlay.classList.add('open');
+
+  const shareUrl = await buildShareURL(deck);
 
   try {
     qrContainer.innerHTML = QR.toSVG(shareUrl, 4, 4);
@@ -407,9 +441,6 @@ function shareDeck() {
     qrContainer.innerHTML = '<p style="color:var(--danger)">Deck too large for QR. Use the link below.</p>';
   }
   $('#qr-link').value = shareUrl;
-
-  qrModal.classList.add('open');
-  qrOverlay.classList.add('open');
 
   $('#btn-copy-link').onclick = () => {
     navigator.clipboard.writeText(shareUrl).then(() => showToast('Link copied!'));
@@ -426,16 +457,55 @@ function shareDeck() {
 function promptImport() {
   const url = prompt('Paste the deck import link:');
   if (!url) return;
+  importFromLink(url);
+}
+
+function importFromLink(url) {
   try {
     const u = new URL(url);
+    const blobId = u.searchParams.get('blob');
     const data = u.searchParams.get('import');
-    if (data) {
+    if (blobId) {
+      importFromBlob(blobId);
+    } else if (data) {
       importData(data);
     } else {
       showToast('Invalid import link');
     }
   } catch {
     showToast('Invalid link');
+  }
+}
+
+async function importFromBlob(blobId) {
+  try {
+    showToast('Downloading deck…');
+    const res = await fetch('https://jsonblob.com/api/jsonBlob/' + blobId);
+    if (!res.ok) throw new Error('Fetch failed');
+    const { name, cards: rawCards } = await res.json();
+    const existing = state.decks.find(d => d.name === name);
+    if (existing) {
+      const existingFronts = new Set(existing.cards.map(c => c.front));
+      let added = 0;
+      for (const [front, back] of rawCards) {
+        if (!existingFronts.has(front)) {
+          existing.cards.push({ id: uid(), front, back });
+          added++;
+        }
+      }
+      state.currentDeckId = existing.id;
+      save(); renderDecks(); renderCards(); showView('cards');
+      showToast(added > 0 ? `Added ${added} new cards to "${name}"` : `"${name}" is already up to date`);
+    } else {
+      const cards = rawCards.map(([front, back]) => ({ id: uid(), front, back }));
+      const deck = { id: uid(), name, cards };
+      state.decks.push(deck);
+      state.currentDeckId = deck.id;
+      save(); renderDecks(); renderCards(); showView('cards');
+      showToast(`Imported ${cards.length} cards into "${name}"`);
+    }
+  } catch {
+    showToast('Failed to download deck');
   }
 }
 
@@ -487,8 +557,12 @@ function startQRDetection(video, status) {
 function handleScannedURL(url) {
   try {
     const u = new URL(url);
+    const blobId = u.searchParams.get('blob');
     const data = u.searchParams.get('import');
-    if (data) {
+    if (blobId) {
+      closeScanner();
+      importFromBlob(blobId);
+    } else if (data) {
       closeScanner();
       importData(data);
     }
@@ -512,10 +586,15 @@ function closeScanner() {
 
 function importFromURL() {
   const params = new URLSearchParams(window.location.search);
+  const blobId = params.get('blob');
   const data = params.get('import');
-  if (!data) return;
-  importData(data);
-  window.history.replaceState({}, '', window.location.pathname);
+  if (blobId) {
+    window.history.replaceState({}, '', window.location.pathname);
+    importFromBlob(blobId);
+  } else if (data) {
+    window.history.replaceState({}, '', window.location.pathname);
+    importData(data);
+  }
 }
 
 function importData(encoded) {
