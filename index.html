@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6c5ce7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Simple flashcard app for studying on the go">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>FlashCards</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header id="header">
+    <button id="btn-menu" class="icon-btn" aria-label="Menu">&#9776;</button>
+    <h1 id="header-title">FlashCards</h1>
+    <button id="btn-add" class="icon-btn" aria-label="Add card">&#43;</button>
+  </header>
+
+  <!-- Deck list view -->
+  <section id="view-decks" class="view active">
+    <div class="empty-state" id="empty-decks">
+      <p>No decks yet</p>
+      <button id="btn-create-deck" class="btn-primary">Create your first deck</button>
+    </div>
+    <ul id="deck-list" class="card-list"></ul>
+  </section>
+
+  <!-- Study view -->
+  <section id="view-study" class="view">
+    <div id="study-progress">
+      <span id="study-counter">0 / 0</span>
+      <div id="progress-bar"><div id="progress-fill"></div></div>
+    </div>
+    <div id="card-container">
+      <div id="flashcard" class="flashcard">
+        <div class="flashcard-inner">
+          <div class="flashcard-front">
+            <p id="card-front-text"></p>
+          </div>
+          <div class="flashcard-back">
+            <p id="card-back-text"></p>
+          </div>
+        </div>
+      </div>
+      <p id="tap-hint">Tap card to flip</p>
+    </div>
+    <div id="study-controls">
+      <button id="btn-prev" class="btn-round" aria-label="Previous">&#8592;</button>
+      <button id="btn-shuffle" class="btn-round" aria-label="Shuffle">&#8645;</button>
+      <button id="btn-next" class="btn-round" aria-label="Next">&#8594;</button>
+    </div>
+  </section>
+
+  <!-- Card list / edit view -->
+  <section id="view-cards" class="view">
+    <div class="empty-state" id="empty-cards">
+      <p>No cards in this deck</p>
+      <button id="btn-add-first-card" class="btn-primary">Add a card</button>
+    </div>
+    <ul id="card-list" class="card-list"></ul>
+    <button id="btn-study" class="btn-primary btn-fab" aria-label="Study">&#9654; Study</button>
+  </section>
+
+  <!-- Side menu -->
+  <div id="menu-overlay" class="overlay"></div>
+  <nav id="side-menu">
+    <h2>Decks</h2>
+    <ul id="menu-deck-list"></ul>
+    <button id="menu-create-deck" class="btn-primary">+ New Deck</button>
+  </nav>
+
+  <!-- Modal for adding/editing cards & decks -->
+  <div id="modal-overlay" class="overlay"></div>
+  <div id="modal" class="modal">
+    <h2 id="modal-title">Add Card</h2>
+    <form id="modal-form">
+      <label id="label-front" for="input-front">Front</label>
+      <textarea id="input-front" rows="3" required></textarea>
+      <label id="label-back" for="input-back">Back</label>
+      <textarea id="input-back" rows="3"></textarea>
+      <div class="modal-actions">
+        <button type="button" id="btn-modal-delete" class="btn-danger">Delete</button>
+        <button type="button" id="btn-modal-cancel" class="btn-secondary">Cancel</button>
+        <button type="submit" id="btn-modal-save" class="btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

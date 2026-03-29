@@ -1,0 +1,28 @@
+{
+  "name": "FlashCards",
+  "short_name": "FlashCards",
+  "description": "Simple flashcard app for studying on the go",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f5fa",
+  "theme_color": "#6c5ce7",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
