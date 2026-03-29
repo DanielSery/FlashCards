@@ -910,6 +910,7 @@ function init() {
   $('#btn-share-deck').onclick = shareDeck;
 
   // Side menu
+  $('#menu-home').onclick = () => { closeMenu(); showView('decks'); renderDecks(); };
   $('#menu-create-deck').onclick = () => { closeMenu(); openCreator(); };
   $('#menu-import-deck').onclick = () => { closeMenu(); openScanner(); };
   $('#menu-create-mobile').onclick = () => { closeMenu(); openMobileDeckCreator(); };
