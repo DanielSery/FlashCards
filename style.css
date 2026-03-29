@@ -24,6 +24,14 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* ── Responsive: mobile vs desktop ── */
+/* Mobile: <= 600px (touch device) */
+.desktop-only { display: none !important; }
+@media (min-width: 601px) {
+  .desktop-only { display: inline-flex !important; }
+  .mobile-only  { display: none !important; }
+}
+
 /* ── Header ── */
 header {
   position: fixed; top: 0; left: 0; right: 0;
@@ -234,6 +242,9 @@ header h1 { font-size: 1.15rem; font-weight: 600; }
   display: block; font-size: .85rem; font-weight: 600;
   color: var(--text-light); margin-bottom: 6px; margin-top: 14px;
 }
+.modal label .hint {
+  font-weight: 400; font-size: .8rem;
+}
 .modal textarea, .modal input[type="text"] {
   width: 100%; padding: 12px; border: 2px solid #dfe6e9;
   border-radius: 10px; font-size: 1rem; font-family: inherit;
@@ -251,11 +262,31 @@ header h1 { font-size: 1.15rem; font-weight: 600; }
 /* Hide delete button by default */
 #btn-modal-delete { display: none; margin-right: auto; }
 
-/* ── Swipe hint animation ── */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.view.active { animation: fadeIn .25s ease; }
+/* ── Creator modal (deck editor on PC) ── */
+#creator-cards {
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: .9rem;
+  line-height: 1.6;
+}
+#creator-preview-count {
+  font-size: .8rem; color: var(--text-light); margin-top: 6px;
+}
 
-/* ── Cards toolbar (import/share) ── */
+#creator-qr-container {
+  display: flex; justify-content: center; margin: 12px 0;
+}
+#creator-qr-container svg { max-width: 240px; width: 100%; height: auto; }
+
+#creator-link-box {
+  display: flex; gap: 8px; margin-top: 8px;
+}
+#creator-link {
+  flex: 1; padding: 10px 12px; border: 2px solid #dfe6e9;
+  border-radius: 10px; font-size: .8rem; font-family: inherit;
+  outline: none; background: var(--bg); color: var(--text);
+}
+
+/* ── Cards toolbar ── */
 #cards-toolbar {
   display: flex; gap: 12px;
   position: fixed;
@@ -286,7 +317,7 @@ header h1 { font-size: 1.15rem; font-weight: 600; }
 }
 #btn-copy-link { padding: 10px 16px; font-size: .85rem; white-space: nowrap; }
 
-/* ── Import success toast ── */
+/* ── Toast ── */
 #toast {
   position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
   background: #2d3436; color: #fff; padding: 12px 24px;
@@ -296,8 +327,12 @@ header h1 { font-size: 1.15rem; font-weight: 600; }
 }
 #toast.show { opacity: 1; }
 
-/* ── Landscape adjustments ── */
-@media (min-width: 600px) {
+/* ── Swipe hint animation ── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.view.active { animation: fadeIn .25s ease; }
+
+/* ── Landscape / desktop adjustments ── */
+@media (min-width: 601px) {
   .view { max-width: 500px; margin: 0 auto; }
-  .modal { left: 50%; right: auto; width: 460px; transform: translateX(-50%); border-radius: 20px 20px 0 0; }
+  .modal { left: 50%; right: auto; width: 500px; transform: translateX(-50%); border-radius: 20px 20px 0 0; }
 }

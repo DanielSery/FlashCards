@@ -3,7 +3,7 @@ let state = {
   decks: [],          // [{ id, name, cards: [{ id, front, back }] }]
   currentDeckId: null,
   studyIndex: 0,
-  studyOrder: [],     // shuffled indices
+  studyOrder: [],
 };
 
 const STORAGE_KEY = 'flashcards_data';
@@ -26,6 +26,10 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 function currentDeck() {
   return state.decks.find(d => d.id === state.currentDeckId) || null;
+}
+
+function isMobile() {
+  return window.innerWidth <= 600;
 }
 
 // ── DOM refs ──
@@ -66,7 +70,7 @@ function showView(name) {
     viewDecks.classList.add('active');
     headerTitle.textContent = 'FlashCards';
     btnAdd.innerHTML = '&#43;';
-    btnAdd.onclick = () => openDeckModal();
+    btnAdd.onclick = () => isMobile() ? promptImport() : openCreator();
   } else if (name === 'cards') {
     viewCards.classList.add('active');
     const deck = currentDeck();
@@ -93,7 +97,6 @@ function renderDecks() {
     emptyDecks.style.display = 'none';
     deckListEl.style.display = '';
     state.decks.forEach(deck => {
-      // Main list
       const li = document.createElement('li');
       li.innerHTML = `
         <div>
@@ -104,7 +107,6 @@ function renderDecks() {
       li.onclick = () => { state.currentDeckId = deck.id; renderCards(); showView('cards'); };
       deckListEl.appendChild(li);
 
-      // Side menu
       const mli = document.createElement('li');
       mli.textContent = deck.name;
       if (deck.id === state.currentDeckId) mli.classList.add('active');
@@ -194,20 +196,20 @@ function shuffleArray(arr) {
   }
 }
 
-// ── Modal: Deck ──
-let modalMode = null; // 'deck-new', 'deck-edit', 'card-new', 'card-edit'
+// ── Card Modal (single card add/edit) ──
+let modalMode = null;
 let editTarget = null;
 
-function openDeckModal(deck) {
-  modalMode = deck ? 'deck-edit' : 'deck-new';
-  editTarget = deck || null;
-  modalTitle.textContent = deck ? 'Edit Deck' : 'New Deck';
+function openDeckEditModal(deck) {
+  modalMode = 'deck-edit';
+  editTarget = deck;
+  modalTitle.textContent = 'Edit Deck';
   labelFront.textContent = 'Deck Name';
-  inputFront.value = deck ? deck.name : '';
+  inputFront.value = deck.name;
   inputFront.setAttribute('rows', '1');
   labelBack.style.display = 'none';
   inputBack.style.display = 'none';
-  btnModalDelete.style.display = deck ? '' : 'none';
+  btnModalDelete.style.display = '';
   openModal();
 }
 
@@ -241,18 +243,12 @@ function closeModal() {
 
 function handleSave(e) {
   e.preventDefault();
-  if (modalMode === 'deck-new') {
-    const name = inputFront.value.trim();
-    if (!name) return;
-    const deck = { id: uid(), name, cards: [] };
-    state.decks.push(deck);
-    state.currentDeckId = deck.id;
-    save(); renderDecks(); renderCards(); showView('cards');
-  } else if (modalMode === 'deck-edit') {
+  if (modalMode === 'deck-edit') {
     const name = inputFront.value.trim();
     if (!name || !editTarget) return;
     editTarget.name = name;
     save(); renderDecks(); renderCards();
+    headerTitle.textContent = name;
   } else if (modalMode === 'card-new') {
     const front = inputFront.value.trim();
     const back = inputBack.value.trim();
@@ -261,11 +257,10 @@ function handleSave(e) {
     if (!deck) return;
     deck.cards.push({ id: uid(), front, back });
     save(); renderCards();
-    // Keep modal open for quick multi-add
     inputFront.value = '';
     inputBack.value = '';
     inputFront.focus();
-    return; // don't close modal
+    return;
   } else if (modalMode === 'card-edit') {
     const front = inputFront.value.trim();
     const back = inputBack.value.trim();
@@ -290,6 +285,212 @@ function handleDelete() {
     }
   }
   closeModal();
+}
+
+// ── Deck Creator (PC: text field for bulk cards + QR) ──
+function openCreator() {
+  const creatorModal = $('#creator-modal');
+  const creatorOverlay = $('#creator-overlay');
+  $('#creator-name').value = '';
+  $('#creator-cards').value = '';
+  $('#creator-preview-count').textContent = '';
+  $('#creator-form').style.display = '';
+  $('#creator-qr-section').style.display = 'none';
+  $('#creator-title').textContent = 'Create Deck';
+  creatorModal.classList.add('open');
+  creatorOverlay.classList.add('open');
+  setTimeout(() => $('#creator-name').focus(), 100);
+}
+
+function closeCreator() {
+  $('#creator-modal').classList.remove('open');
+  $('#creator-overlay').classList.remove('open');
+}
+
+function handleCreatorSave(e) {
+  e.preventDefault();
+  const name = $('#creator-name').value.trim();
+  const cardsText = $('#creator-cards').value.trim();
+  if (!name) return;
+
+  const cards = parseCSVText(cardsText);
+  const deck = { id: uid(), name, cards };
+  state.decks.push(deck);
+  state.currentDeckId = deck.id;
+  save(); renderDecks(); renderCards();
+
+  // Show QR code
+  showCreatorQR(deck);
+}
+
+function showCreatorQR(deck) {
+  const shareUrl = buildShareURL(deck);
+
+  $('#creator-form').style.display = 'none';
+  const qrSection = $('#creator-qr-section');
+  qrSection.style.display = '';
+  $('#creator-title').textContent = `"${deck.name}" created (${deck.cards.length} cards)`;
+
+  const qrContainer = $('#creator-qr-container');
+  try {
+    qrContainer.innerHTML = QR.toSVG(shareUrl, 4, 4);
+  } catch {
+    qrContainer.innerHTML = '<p style="color:var(--danger);font-size:.9rem">Deck too large for QR. Use the link below.</p>';
+  }
+
+  $('#creator-link').value = shareUrl;
+  $('#btn-creator-copy').onclick = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => showToast('Link copied!'));
+  };
+  $('#btn-creator-done').onclick = () => {
+    closeCreator();
+    showView('cards');
+  };
+}
+
+// ── CSV Parsing ──
+function parseCSVText(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const cards = [];
+  for (const line of lines) {
+    const parts = parseCSVLine(line);
+    if (parts.length >= 2) {
+      cards.push({ id: uid(), front: parts[0].trim(), back: parts[1].trim() });
+    } else if (parts.length === 1 && parts[0].trim()) {
+      cards.push({ id: uid(), front: parts[0].trim(), back: '' });
+    }
+  }
+  return cards;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else current += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',' || ch === ';' || ch === '\t') { result.push(current); current = ''; }
+      else current += ch;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+// ── Share URL building ──
+function buildShareURL(deck) {
+  const payload = JSON.stringify({ name: deck.name, cards: deck.cards.map(c => [c.front, c.back]) });
+  const encoded = btoa(unescape(encodeURIComponent(payload)));
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  return baseUrl + '?import=' + encodeURIComponent(encoded);
+}
+
+// ── Share existing deck as QR ──
+function shareDeck() {
+  const deck = currentDeck();
+  if (!deck || deck.cards.length === 0) return;
+  const shareUrl = buildShareURL(deck);
+
+  const qrModal = $('#qr-modal');
+  const qrOverlay = $('#qr-overlay');
+  const qrContainer = $('#qr-container');
+
+  try {
+    qrContainer.innerHTML = QR.toSVG(shareUrl, 4, 4);
+  } catch {
+    qrContainer.innerHTML = '<p style="color:var(--danger)">Deck too large for QR. Use the link below.</p>';
+  }
+  $('#qr-link').value = shareUrl;
+
+  qrModal.classList.add('open');
+  qrOverlay.classList.add('open');
+
+  $('#btn-copy-link').onclick = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => showToast('Link copied!'));
+  };
+  const closeQR = () => {
+    qrModal.classList.remove('open');
+    qrOverlay.classList.remove('open');
+  };
+  $('#btn-qr-close').onclick = closeQR;
+  qrOverlay.onclick = closeQR;
+}
+
+// ── Mobile: Import from URL (prompt or auto) ──
+function promptImport() {
+  const url = prompt('Paste the deck import link:');
+  if (!url) return;
+  try {
+    const u = new URL(url);
+    const data = u.searchParams.get('import');
+    if (data) {
+      importData(data);
+    } else {
+      showToast('Invalid import link');
+    }
+  } catch {
+    showToast('Invalid link');
+  }
+}
+
+function importFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const data = params.get('import');
+  if (!data) return;
+  importData(data);
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+function importData(encoded) {
+  try {
+    const json = decodeURIComponent(escape(atob(decodeURIComponent(encoded))));
+    const { name, cards: rawCards } = JSON.parse(json);
+    const existing = state.decks.find(d => d.name === name);
+    if (existing) {
+      const existingFronts = new Set(existing.cards.map(c => c.front));
+      let added = 0;
+      for (const [front, back] of rawCards) {
+        if (!existingFronts.has(front)) {
+          existing.cards.push({ id: uid(), front, back });
+          added++;
+        }
+      }
+      state.currentDeckId = existing.id;
+      save(); renderDecks(); renderCards(); showView('cards');
+      showToast(added > 0 ? `Added ${added} new cards to "${name}"` : `"${name}" is already up to date`);
+    } else {
+      const cards = rawCards.map(([front, back]) => ({ id: uid(), front, back }));
+      const deck = { id: uid(), name, cards };
+      state.decks.push(deck);
+      state.currentDeckId = deck.id;
+      save(); renderDecks(); renderCards(); showView('cards');
+      showToast(`Imported ${cards.length} cards into "${name}"`);
+    }
+  } catch {
+    showToast('Invalid import data');
+  }
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const toast = $('#toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ── Escape HTML ──
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
 }
 
 // ── Side menu ──
@@ -325,167 +526,23 @@ function setupSwipe() {
   }, { passive: true });
 }
 
-// ── Escape HTML ──
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
-
-// ── CSV Import ──
-function parseCSV(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  const cards = [];
-  for (const line of lines) {
-    const parts = parseCSVLine(line);
-    if (parts.length >= 2) {
-      cards.push({ id: uid(), front: parts[0].trim(), back: parts[1].trim() });
-    } else if (parts.length === 1 && parts[0].trim()) {
-      cards.push({ id: uid(), front: parts[0].trim(), back: '' });
-    }
-  }
-  return cards;
-}
-
-function parseCSVLine(line) {
-  const result = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
-      else if (ch === '"') inQuotes = false;
-      else current += ch;
-    } else {
-      if (ch === '"') inQuotes = true;
-      else if (ch === ',' || ch === ';' || ch === '\t') { result.push(current); current = ''; }
-      else current += ch;
-    }
-  }
-  result.push(current);
-  return result;
-}
-
-function importCSVFile() {
-  const input = $('#csv-file-input');
-  input.value = '';
-  input.onchange = () => {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const cards = parseCSV(reader.result);
-      if (cards.length === 0) { showToast('No cards found in CSV'); return; }
-      const name = file.name.replace(/\.(csv|txt)$/i, '');
-      const deck = { id: uid(), name, cards };
-      state.decks.push(deck);
-      state.currentDeckId = deck.id;
-      save(); renderDecks(); renderCards(); showView('cards');
-      showToast(`Imported ${cards.length} cards into "${name}"`);
-    };
-    reader.readAsText(file);
-  };
-  input.click();
-}
-
-// ── Share Deck (QR + Link) ──
-function shareDeck() {
-  const deck = currentDeck();
-  if (!deck || deck.cards.length === 0) return;
-  // Encode deck as JSON, compress with base64
-  const payload = JSON.stringify({ name: deck.name, cards: deck.cards.map(c => [c.front, c.back]) });
-  const encoded = btoa(unescape(encodeURIComponent(payload)));
-  const baseUrl = window.location.href.split('#')[0].split('?')[0];
-  const shareUrl = baseUrl + '?import=' + encodeURIComponent(encoded);
-
-  // Show QR modal
-  const qrModal = $('#qr-modal');
-  const qrOverlay = $('#qr-overlay');
-  const qrContainer = $('#qr-container');
-  const qrLink = $('#qr-link');
-
-  try {
-    qrContainer.innerHTML = QR.toSVG(shareUrl, 4, 4);
-  } catch {
-    qrContainer.innerHTML = '<p style="color:var(--danger)">Deck too large for QR code. Use the link below instead.</p>';
-  }
-  qrLink.value = shareUrl;
-
-  qrModal.classList.add('open');
-  qrOverlay.classList.add('open');
-
-  $('#btn-copy-link').onclick = () => {
-    navigator.clipboard.writeText(shareUrl).then(() => showToast('Link copied!'));
-  };
-  $('#btn-qr-close').onclick = () => {
-    qrModal.classList.remove('open');
-    qrOverlay.classList.remove('open');
-  };
-  qrOverlay.onclick = () => {
-    qrModal.classList.remove('open');
-    qrOverlay.classList.remove('open');
-  };
-}
-
-// ── Import from URL ──
-function importFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  const data = params.get('import');
-  if (!data) return;
-  try {
-    const json = decodeURIComponent(escape(atob(decodeURIComponent(data))));
-    const { name, cards: rawCards } = JSON.parse(json);
-    // Check if deck with same name already exists
-    const existing = state.decks.find(d => d.name === name);
-    if (existing) {
-      // Merge: add cards that don't exist yet (by front text)
-      const existingFronts = new Set(existing.cards.map(c => c.front));
-      let added = 0;
-      for (const [front, back] of rawCards) {
-        if (!existingFronts.has(front)) {
-          existing.cards.push({ id: uid(), front, back });
-          added++;
-        }
-      }
-      state.currentDeckId = existing.id;
-      save(); renderDecks(); renderCards(); showView('cards');
-      showToast(added > 0 ? `Added ${added} new cards to "${name}"` : `"${name}" is already up to date`);
-    } else {
-      const cards = rawCards.map(([front, back]) => ({ id: uid(), front, back }));
-      const deck = { id: uid(), name, cards };
-      state.decks.push(deck);
-      state.currentDeckId = deck.id;
-      save(); renderDecks(); renderCards(); showView('cards');
-      showToast(`Imported ${cards.length} cards into "${name}"`);
-    }
-  } catch {
-    showToast('Invalid import link');
-  }
-  // Clean URL
-  window.history.replaceState({}, '', window.location.pathname);
-}
-
-// ── Toast notification ──
-function showToast(msg) {
-  let toast = $('#toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => toast.classList.remove('show'), 2500);
-}
-
-// ── Long-press deck name to edit ──
-function setupDeckLongPress() {
+// ── Tap deck title to edit ──
+function setupDeckTitleEdit() {
   headerTitle.addEventListener('click', () => {
     const deck = currentDeck();
     if (deck && viewCards.classList.contains('active')) {
-      openDeckModal(deck);
-    } else if (viewCards.classList.contains('active') || viewStudy.classList.contains('active')) {
-      // go back
-    } else {
-      // do nothing on decks view
+      openDeckEditModal(deck);
     }
+  });
+}
+
+// ── Live card count in creator ──
+function setupCreatorPreview() {
+  const textarea = $('#creator-cards');
+  const counter = $('#creator-preview-count');
+  textarea.addEventListener('input', () => {
+    const lines = textarea.value.split(/\r?\n/).filter(l => l.trim()).length;
+    counter.textContent = lines > 0 ? `${lines} card${lines !== 1 ? 's' : ''}` : '';
   });
 }
 
@@ -500,22 +557,35 @@ function init() {
   btnModalCancel.onclick = closeModal;
   modalForm.onsubmit = handleSave;
   btnModalDelete.onclick = handleDelete;
-  $('#btn-create-deck').onclick = () => openDeckModal();
+
+  // Deck list buttons
+  $('#btn-create-deck').onclick = () => openCreator();
+  $('#btn-import-deck').onclick = () => promptImport();
+  $('#btn-import-fab').onclick = () => promptImport();
+
+  // Card list buttons
   $('#btn-add-first-card').onclick = () => openCardModal();
-  $('#menu-create-deck').onclick = () => { closeMenu(); openDeckModal(); };
+  $('#btn-share-deck').onclick = shareDeck;
+
+  // Side menu
+  $('#menu-create-deck').onclick = () => { closeMenu(); openCreator(); };
+  $('#menu-import-deck').onclick = () => { closeMenu(); promptImport(); };
+
+  // Study
   btnStudy.onclick = startStudy;
   flashcard.onclick = () => flashcard.classList.toggle('flipped');
   $('#btn-next').onclick = studyNext;
   $('#btn-prev').onclick = studyPrev;
   $('#btn-shuffle').onclick = studyShuffle;
 
-  $('#btn-import-csv').onclick = importCSVFile;
-  $('#btn-import-empty').onclick = importCSVFile;
-  $('#btn-share-deck').onclick = shareDeck;
-  $('#menu-import-csv').onclick = () => { closeMenu(); importCSVFile(); };
+  // Creator modal
+  $('#creator-form').onsubmit = handleCreatorSave;
+  $('#btn-creator-cancel').onclick = closeCreator;
+  $('#creator-overlay').onclick = closeCreator;
+  setupCreatorPreview();
 
   setupSwipe();
-  setupDeckLongPress();
+  setupDeckTitleEdit();
 
   // Import from URL if present
   importFromURL();
@@ -523,13 +593,10 @@ function init() {
   // Back navigation
   window.addEventListener('popstate', () => {
     if (modal.classList.contains('open')) { closeModal(); }
+    else if ($('#creator-modal').classList.contains('open')) { closeCreator(); }
     else if (viewStudy.classList.contains('active')) { showView('cards'); }
     else if (viewCards.classList.contains('active')) { showView('decks'); renderDecks(); }
   });
-
-  // Push state on view changes so back button works
-  const origShowView = showView;
-  window.showView = showView;
 
   // Keyboard navigation in study
   document.addEventListener('keydown', e => {

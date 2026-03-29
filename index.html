@@ -25,9 +25,11 @@
   <section id="view-decks" class="view active">
     <div class="empty-state" id="empty-decks">
       <p>No decks yet</p>
-      <button id="btn-create-deck" class="btn-primary">Create your first deck</button>
+      <button id="btn-create-deck" class="btn-primary desktop-only">Create a deck</button>
+      <button id="btn-import-deck" class="btn-primary mobile-only">Import Deck</button>
     </div>
     <ul id="deck-list" class="card-list"></ul>
+    <button id="btn-import-fab" class="btn-primary btn-fab mobile-only" aria-label="Import Deck">&#8615; Import</button>
   </section>
 
   <!-- Study view -->
@@ -61,12 +63,10 @@
     <div class="empty-state" id="empty-cards">
       <p>No cards in this deck</p>
       <button id="btn-add-first-card" class="btn-primary">Add a card</button>
-    <button id="btn-import-empty" class="btn-secondary" style="margin-top:10px">Import CSV</button>
     </div>
     <ul id="card-list" class="card-list"></ul>
     <div id="cards-toolbar">
-      <button id="btn-import-csv" class="btn-round" aria-label="Import CSV" title="Import CSV">&#8593;</button>
-      <button id="btn-share-deck" class="btn-round" aria-label="Share deck" title="Share deck">&#9741;</button>
+      <button id="btn-share-deck" class="btn-round desktop-only" aria-label="Share deck" title="Share as QR">&#9741;</button>
     </div>
     <button id="btn-study" class="btn-primary btn-fab" aria-label="Study">&#9654; Study</button>
   </section>
@@ -76,11 +76,11 @@
   <nav id="side-menu">
     <h2>Decks</h2>
     <ul id="menu-deck-list"></ul>
-    <button id="menu-create-deck" class="btn-primary">+ New Deck</button>
-    <button id="menu-import-csv" class="btn-secondary" style="margin-top:8px;width:100%">Import CSV</button>
+    <button id="menu-create-deck" class="btn-primary desktop-only" style="width:100%">+ New Deck</button>
+    <button id="menu-import-deck" class="btn-primary mobile-only" style="width:100%">Import Deck</button>
   </nav>
 
-  <!-- Modal for adding/editing cards & decks -->
+  <!-- Modal for editing single card -->
   <div id="modal-overlay" class="overlay"></div>
   <div id="modal" class="modal">
     <h2 id="modal-title">Add Card</h2>
@@ -97,13 +97,37 @@
     </form>
   </div>
 
-  <!-- Toast notification -->
-  <div id="toast"></div>
+  <!-- Deck creator (PC: text field + QR) -->
+  <div id="creator-overlay" class="overlay"></div>
+  <div id="creator-modal" class="modal">
+    <h2 id="creator-title">Create Deck</h2>
+    <form id="creator-form">
+      <label for="creator-name">Deck Name</label>
+      <input type="text" id="creator-name" placeholder="e.g. Spanish Vocab" required>
+      <label for="creator-cards">Cards <span class="hint">(one per line: front, back)</span></label>
+      <textarea id="creator-cards" rows="10" placeholder="What is 2+2?, 4&#10;Capital of France?, Paris&#10;Bonjour, Hello"></textarea>
+      <div id="creator-preview-count"></div>
+      <div class="modal-actions">
+        <button type="button" id="btn-creator-cancel" class="btn-secondary">Cancel</button>
+        <button type="submit" id="btn-creator-save" class="btn-primary">Create & Share QR</button>
+      </div>
+    </form>
+    <!-- QR appears here after creation -->
+    <div id="creator-qr-section" style="display:none">
+      <hr style="margin:20px 0;border:none;border-top:1px solid #dfe6e9">
+      <h3 style="font-size:1rem;margin-bottom:8px">Scan on mobile to import</h3>
+      <div id="creator-qr-container"></div>
+      <div id="creator-link-box">
+        <input type="text" id="creator-link" readonly>
+        <button type="button" id="btn-creator-copy" class="btn-primary">Copy</button>
+      </div>
+      <div class="modal-actions" style="margin-top:12px">
+        <button type="button" id="btn-creator-done" class="btn-primary">Done</button>
+      </div>
+    </div>
+  </div>
 
-  <!-- Hidden file input for CSV import -->
-  <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none">
-
-  <!-- QR modal -->
+  <!-- QR share modal (for existing decks) -->
   <div id="qr-overlay" class="overlay"></div>
   <div id="qr-modal" class="modal">
     <h2>Share Deck</h2>
@@ -111,12 +135,15 @@
     <div id="qr-container"></div>
     <div id="qr-link-box">
       <input type="text" id="qr-link" readonly>
-      <button type="button" id="btn-copy-link" class="btn-primary">Copy Link</button>
+      <button type="button" id="btn-copy-link" class="btn-primary">Copy</button>
     </div>
     <div class="modal-actions">
       <button type="button" id="btn-qr-close" class="btn-secondary">Close</button>
     </div>
   </div>
+
+  <!-- Toast notification -->
+  <div id="toast"></div>
 
   <script src="qr.js"></script>
   <script src="app.js"></script>
