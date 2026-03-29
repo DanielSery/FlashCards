@@ -66,6 +66,8 @@ const progressFill = $('#progress-fill');
 const btnStudy = $('#btn-study');
 
 // ── View management ──
+let currentView = 'decks';
+
 function showView(name) {
   [viewDecks, viewStudy, viewCards].forEach(v => v.classList.remove('active'));
   if (name === 'decks') {
@@ -84,6 +86,10 @@ function showView(name) {
     headerTitle.textContent = 'Study';
     btnAdd.innerHTML = '&#10005;';
     btnAdd.onclick = () => showView('cards');
+  }
+  if (name !== currentView) {
+    history.pushState({ view: name }, '');
+    currentView = name;
   }
 }
 
@@ -355,6 +361,7 @@ function openCardModal(card) {
 function openModal() {
   modal.classList.add('open');
   modalOverlay.classList.add('open');
+  history.pushState({ modal: true }, '');
   setTimeout(() => inputFront.focus(), 100);
 }
 
@@ -878,6 +885,7 @@ function setupCreatorPreview() {
 function init() {
   load();
   renderDecks();
+  history.replaceState({ view: 'decks' }, '');
 
   btnMenu.onclick = openMenu;
   menuOverlay.onclick = closeMenu;
@@ -934,12 +942,32 @@ function init() {
   importFromURL();
 
   // Back navigation
-  window.addEventListener('popstate', () => {
-    if (modal.classList.contains('open')) { closeModal(); }
-    else if ($('#scanner-modal').classList.contains('open')) { closeScanner(); }
-    else if ($('#creator-modal').classList.contains('open')) { closeCreator(); }
-    else if (viewStudy.classList.contains('active')) { showView('cards'); }
-    else if (viewCards.classList.contains('active')) { showView('decks'); renderDecks(); }
+  window.addEventListener('popstate', (e) => {
+    if (modal.classList.contains('open')) { closeModal(); return; }
+    if ($('#scanner-modal').classList.contains('open')) { closeScanner(); return; }
+    if ($('#creator-modal').classList.contains('open')) { closeCreator(); return; }
+    // Navigate back between views without pushing new history
+    const target = e.state && e.state.view ? e.state.view : 'decks';
+    currentView = target;
+    [viewDecks, viewStudy, viewCards].forEach(v => v.classList.remove('active'));
+    if (target === 'decks') {
+      viewDecks.classList.add('active');
+      headerTitle.textContent = 'FlashCards';
+      btnAdd.innerHTML = '&#43;';
+      btnAdd.onclick = () => isMobile() ? openMobileDeckCreator() : openCreator();
+      renderDecks();
+    } else if (target === 'cards') {
+      viewCards.classList.add('active');
+      const deck = currentDeck();
+      headerTitle.textContent = deck ? deck.name : 'Cards';
+      btnAdd.innerHTML = '&#43;';
+      btnAdd.onclick = () => openCardModal();
+    } else if (target === 'study') {
+      viewStudy.classList.add('active');
+      headerTitle.textContent = 'Study';
+      btnAdd.innerHTML = '&#10005;';
+      btnAdd.onclick = () => showView('cards');
+    }
   });
 
   // Keyboard navigation in study
