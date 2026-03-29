@@ -401,40 +401,22 @@ async function uploadDeck(deck) {
   const payload = { name: deck.name, cards: deck.cards.map(c => [c.front, c.back]) };
   const body = JSON.stringify(payload);
 
-  // Try npoint.io (CORS-friendly)
-  try {
-    const res = await fetch('https://api.npoint.io/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
-    if (res.ok) {
-      const result = await res.json();
-      if (result && result.id) return { provider: 'npoint', id: result.id };
-    }
-  } catch { /* try next */ }
-
-  // Try jsonblob.com
-  try {
-    const res = await fetch('https://jsonblob.com/api/jsonBlob', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body,
-    });
-    if (res.ok || res.status === 201) {
-      const location = res.headers.get('Location') || '';
-      const blobId = location.split('/').pop();
-      if (blobId) return { provider: 'jsonblob', id: blobId };
-    }
-  } catch { /* try next */ }
-
-  throw new Error('All upload providers failed');
+  // bytebin.lucko.me — free paste service with full CORS support
+  const res = await fetch('https://bytebin.lucko.me/post', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  const result = await res.json();
+  if (!result || !result.key) throw new Error('No key returned');
+  return result.key;
 }
 
 async function buildShareURL(deck) {
   try {
-    const { provider, id } = await uploadDeck(deck);
-    return baseAppUrl() + '?store=' + provider + ':' + id;
+    const key = await uploadDeck(deck);
+    return baseAppUrl() + '?store=' + key;
   } catch {
     showToast('Cloud upload failed, using inline link');
     return buildInlineShareURL(deck);
@@ -485,13 +467,10 @@ function promptImport() {
 function importFromLink(url) {
   try {
     const u = new URL(url);
-    const store = u.searchParams.get('store');
-    const blobId = u.searchParams.get('blob');
+    const storeKey = u.searchParams.get('store');
     const data = u.searchParams.get('import');
-    if (store) {
-      importFromStore(store);
-    } else if (blobId) {
-      importFromStore('jsonblob:' + blobId);
+    if (storeKey) {
+      importFromStore(storeKey);
     } else if (data) {
       importData(data);
     } else {
@@ -502,19 +481,10 @@ function importFromLink(url) {
   }
 }
 
-function storeURL(storeParam) {
-  const [provider, id] = storeParam.split(':');
-  if (provider === 'jsonblob') return 'https://jsonblob.com/api/jsonBlob/' + id;
-  if (provider === 'npoint') return 'https://api.npoint.io/' + id;
-  return null;
-}
-
-async function importFromStore(storeParam) {
-  const url = storeURL(storeParam);
-  if (!url) { showToast('Unknown storage provider'); return; }
+async function importFromStore(key) {
   try {
     showToast('Downloading deck…');
-    const res = await fetch(url);
+    const res = await fetch('https://bytebin.lucko.me/' + key);
     if (!res.ok) throw new Error('Fetch failed');
     const { name, cards: rawCards } = await res.json();
     const existing = state.decks.find(d => d.name === name);
@@ -591,10 +561,7 @@ function startQRDetection(video, status) {
 function handleScannedURL(url) {
   try {
     const u = new URL(url);
-    const store = u.searchParams.get('store');
-    const blobId = u.searchParams.get('blob');
-    const data = u.searchParams.get('import');
-    if (store || blobId || data) {
+    if (u.searchParams.get('store') || u.searchParams.get('import')) {
       closeScanner();
       importFromLink(url);
     }
@@ -618,7 +585,7 @@ function closeScanner() {
 
 function importFromURL() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('store') || params.get('blob') || params.get('import')) {
+  if (params.get('store') || params.get('import')) {
     const url = window.location.href;
     window.history.replaceState({}, '', window.location.pathname);
     importFromLink(url);
