@@ -57,9 +57,9 @@ const QR = (() => {
     null,
     [1,26,19,7,1],[2,44,34,10,1],[3,70,55,15,1],[4,100,80,20,1],
     [5,134,108,26,1],[6,172,136,18,2],[7,196,156,20,2],[8,242,194,24,2],
-    [9,292,232,30,2],[10,346,274,18,2],[11,404,324,20,4],[12,466,370,24,4],
-    [13,532,428,26,4],[14,581,461,30,4],[15,655,523,22,4],[16,733,589,24,4],
-    [17,815,647,28,4],[18,901,721,30,4],[19,991,795,28,4],[20,1085,861,28,4],
+    [9,292,232,30,2],[10,346,274,18,4],[11,404,324,20,4],[12,466,370,24,4],
+    [13,532,428,26,4],[14,581,461,30,4],[15,655,523,22,6],[16,733,589,24,6],
+    [17,815,647,28,6],[18,901,721,30,6],[19,991,795,28,7],[20,1085,861,28,8],
   ];
 
   function pickVersion(len) {
@@ -274,6 +274,26 @@ const QR = (() => {
     return ((data << 10) | d) ^ 0b101010000010010;
   }
 
+  function versionInfoBits(ver) {
+    let d = ver << 12;
+    for (let i = 5; i >= 0; i--) {
+      if (d & (1 << (i + 12))) d ^= 0x1F25 << i;
+    }
+    return (ver << 12) | d;
+  }
+
+  function placeVersionInfo(matrix, size, ver) {
+    if (ver < 7) return;
+    const bits = versionInfoBits(ver);
+    for (let i = 0; i < 6; i++) {
+      for (let j = 0; j < 3; j++) {
+        const bit = (bits >> (i * 3 + j)) & 1;
+        matrix[i][size - 11 + j] = bit ? 1 : -1;
+        matrix[size - 11 + j][i] = bit ? 1 : -1;
+      }
+    }
+  }
+
   function penalty(matrix, size) {
     let score = 0;
     // Simplified: just count adjacent same-color runs
@@ -319,6 +339,7 @@ const QR = (() => {
 
     applyMask(matrix, reserved, size, bestMask);
     placeFormatInfo(matrix, size, bestMask);
+    placeVersionInfo(matrix, size, version);
 
     return { matrix, size };
   }
