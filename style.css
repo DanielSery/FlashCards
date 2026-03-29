@@ -302,7 +302,7 @@ header h1 { font-size: 1.15rem; font-weight: 600; }
 #creator-qr-container {
   display: flex; justify-content: center; margin: 12px 0;
 }
-#creator-qr-container svg { max-width: 240px; width: 100%; height: auto; }
+#creator-qr-container svg { max-width: 320px; width: 100%; height: auto; }
 
 #creator-link-box {
   display: flex; gap: 8px; margin-top: 8px;
@@ -327,7 +327,7 @@ header h1 { font-size: 1.15rem; font-weight: 600; }
   display: flex; justify-content: center;
   margin: 16px 0;
 }
-#qr-container svg { max-width: 260px; width: 100%; height: auto; }
+#qr-container svg { max-width: 320px; width: 100%; height: auto; }
 
 #qr-instructions {
   font-size: .9rem; color: var(--text-light);

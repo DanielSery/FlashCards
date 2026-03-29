@@ -336,7 +336,7 @@ async function showCreatorQR(deck) {
   const shareUrl = await buildShareURL(deck);
 
   try {
-    qrContainer.innerHTML = QR.toSVG(shareUrl, 4, 4);
+    qrContainer.innerHTML = QR.toSVG(shareUrl, 6, 16);
   } catch {
     qrContainer.innerHTML = '<p style="color:var(--danger);font-size:.9rem">Deck too large for QR. Use the link below.</p>';
   }
@@ -440,7 +440,7 @@ async function shareDeck() {
   const shareUrl = await buildShareURL(deck);
 
   try {
-    qrContainer.innerHTML = QR.toSVG(shareUrl, 4, 4);
+    qrContainer.innerHTML = QR.toSVG(shareUrl, 6, 16);
   } catch {
     qrContainer.innerHTML = '<p style="color:var(--danger)">Deck too large for QR. Use the link below.</p>';
   }
