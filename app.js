@@ -399,22 +399,44 @@ function buildInlineShareURL(deck) {
 
 async function uploadDeck(deck) {
   const payload = { name: deck.name, cards: deck.cards.map(c => [c.front, c.back]) };
-  const res = await fetch('https://jsonblob.com/api/jsonBlob', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error('Upload failed');
-  const location = res.headers.get('Location') || '';
-  const blobId = location.split('/').pop();
-  if (!blobId) throw new Error('No blob ID');
-  return baseAppUrl() + '?blob=' + blobId;
+  const body = JSON.stringify(payload);
+
+  // Try jsonblob.com
+  try {
+    const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body,
+    });
+    if (res.ok || res.status === 201) {
+      const location = res.headers.get('Location') || '';
+      const blobId = location.split('/').pop();
+      if (blobId) return { provider: 'jsonblob', id: blobId };
+    }
+  } catch { /* try next */ }
+
+  // Try npoint.io
+  try {
+    const res = await fetch('https://api.npoint.io/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+    if (res.ok) {
+      const result = await res.json();
+      if (result && result.id) return { provider: 'npoint', id: result.id };
+    }
+  } catch { /* try next */ }
+
+  throw new Error('All upload providers failed');
 }
 
 async function buildShareURL(deck) {
   try {
-    return await uploadDeck(deck);
+    const { provider, id } = await uploadDeck(deck);
+    return baseAppUrl() + '?store=' + provider + ':' + id;
   } catch {
+    showToast('Cloud upload failed, using inline link');
     return buildInlineShareURL(deck);
   }
 }
@@ -463,10 +485,13 @@ function promptImport() {
 function importFromLink(url) {
   try {
     const u = new URL(url);
+    const store = u.searchParams.get('store');
     const blobId = u.searchParams.get('blob');
     const data = u.searchParams.get('import');
-    if (blobId) {
-      importFromBlob(blobId);
+    if (store) {
+      importFromStore(store);
+    } else if (blobId) {
+      importFromStore('jsonblob:' + blobId);
     } else if (data) {
       importData(data);
     } else {
@@ -477,10 +502,19 @@ function importFromLink(url) {
   }
 }
 
-async function importFromBlob(blobId) {
+function storeURL(storeParam) {
+  const [provider, id] = storeParam.split(':');
+  if (provider === 'jsonblob') return 'https://jsonblob.com/api/jsonBlob/' + id;
+  if (provider === 'npoint') return 'https://api.npoint.io/' + id;
+  return null;
+}
+
+async function importFromStore(storeParam) {
+  const url = storeURL(storeParam);
+  if (!url) { showToast('Unknown storage provider'); return; }
   try {
     showToast('Downloading deck…');
-    const res = await fetch('https://jsonblob.com/api/jsonBlob/' + blobId);
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Fetch failed');
     const { name, cards: rawCards } = await res.json();
     const existing = state.decks.find(d => d.name === name);
@@ -557,14 +591,12 @@ function startQRDetection(video, status) {
 function handleScannedURL(url) {
   try {
     const u = new URL(url);
+    const store = u.searchParams.get('store');
     const blobId = u.searchParams.get('blob');
     const data = u.searchParams.get('import');
-    if (blobId) {
+    if (store || blobId || data) {
       closeScanner();
-      importFromBlob(blobId);
-    } else if (data) {
-      closeScanner();
-      importData(data);
+      importFromLink(url);
     }
   } catch { /* not a valid URL, keep scanning */ }
 }
@@ -586,14 +618,10 @@ function closeScanner() {
 
 function importFromURL() {
   const params = new URLSearchParams(window.location.search);
-  const blobId = params.get('blob');
-  const data = params.get('import');
-  if (blobId) {
+  if (params.get('store') || params.get('blob') || params.get('import')) {
+    const url = window.location.href;
     window.history.replaceState({}, '', window.location.pathname);
-    importFromBlob(blobId);
-  } else if (data) {
-    window.history.replaceState({}, '', window.location.pathname);
-    importData(data);
+    importFromLink(url);
   }
 }
 
