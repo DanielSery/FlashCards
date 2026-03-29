@@ -61,8 +61,13 @@
     <div class="empty-state" id="empty-cards">
       <p>No cards in this deck</p>
       <button id="btn-add-first-card" class="btn-primary">Add a card</button>
+    <button id="btn-import-empty" class="btn-secondary" style="margin-top:10px">Import CSV</button>
     </div>
     <ul id="card-list" class="card-list"></ul>
+    <div id="cards-toolbar">
+      <button id="btn-import-csv" class="btn-round" aria-label="Import CSV" title="Import CSV">&#8593;</button>
+      <button id="btn-share-deck" class="btn-round" aria-label="Share deck" title="Share deck">&#9741;</button>
+    </div>
     <button id="btn-study" class="btn-primary btn-fab" aria-label="Study">&#9654; Study</button>
   </section>
 
@@ -72,6 +77,7 @@
     <h2>Decks</h2>
     <ul id="menu-deck-list"></ul>
     <button id="menu-create-deck" class="btn-primary">+ New Deck</button>
+    <button id="menu-import-csv" class="btn-secondary" style="margin-top:8px;width:100%">Import CSV</button>
   </nav>
 
   <!-- Modal for adding/editing cards & decks -->
@@ -91,6 +97,28 @@
     </form>
   </div>
 
+  <!-- Toast notification -->
+  <div id="toast"></div>
+
+  <!-- Hidden file input for CSV import -->
+  <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none">
+
+  <!-- QR modal -->
+  <div id="qr-overlay" class="overlay"></div>
+  <div id="qr-modal" class="modal">
+    <h2>Share Deck</h2>
+    <p id="qr-instructions">Scan this QR code on your mobile device to import the deck.</p>
+    <div id="qr-container"></div>
+    <div id="qr-link-box">
+      <input type="text" id="qr-link" readonly>
+      <button type="button" id="btn-copy-link" class="btn-primary">Copy Link</button>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="btn-qr-close" class="btn-secondary">Close</button>
+    </div>
+  </div>
+
+  <script src="qr.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -332,6 +332,149 @@ function esc(str) {
   return d.innerHTML;
 }
 
+// ── CSV Import ──
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const cards = [];
+  for (const line of lines) {
+    const parts = parseCSVLine(line);
+    if (parts.length >= 2) {
+      cards.push({ id: uid(), front: parts[0].trim(), back: parts[1].trim() });
+    } else if (parts.length === 1 && parts[0].trim()) {
+      cards.push({ id: uid(), front: parts[0].trim(), back: '' });
+    }
+  }
+  return cards;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else current += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',' || ch === ';' || ch === '\t') { result.push(current); current = ''; }
+      else current += ch;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+function importCSVFile() {
+  const input = $('#csv-file-input');
+  input.value = '';
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const cards = parseCSV(reader.result);
+      if (cards.length === 0) { showToast('No cards found in CSV'); return; }
+      const name = file.name.replace(/\.(csv|txt)$/i, '');
+      const deck = { id: uid(), name, cards };
+      state.decks.push(deck);
+      state.currentDeckId = deck.id;
+      save(); renderDecks(); renderCards(); showView('cards');
+      showToast(`Imported ${cards.length} cards into "${name}"`);
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ── Share Deck (QR + Link) ──
+function shareDeck() {
+  const deck = currentDeck();
+  if (!deck || deck.cards.length === 0) return;
+  // Encode deck as JSON, compress with base64
+  const payload = JSON.stringify({ name: deck.name, cards: deck.cards.map(c => [c.front, c.back]) });
+  const encoded = btoa(unescape(encodeURIComponent(payload)));
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  const shareUrl = baseUrl + '?import=' + encodeURIComponent(encoded);
+
+  // Show QR modal
+  const qrModal = $('#qr-modal');
+  const qrOverlay = $('#qr-overlay');
+  const qrContainer = $('#qr-container');
+  const qrLink = $('#qr-link');
+
+  try {
+    qrContainer.innerHTML = QR.toSVG(shareUrl, 4, 4);
+  } catch {
+    qrContainer.innerHTML = '<p style="color:var(--danger)">Deck too large for QR code. Use the link below instead.</p>';
+  }
+  qrLink.value = shareUrl;
+
+  qrModal.classList.add('open');
+  qrOverlay.classList.add('open');
+
+  $('#btn-copy-link').onclick = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => showToast('Link copied!'));
+  };
+  $('#btn-qr-close').onclick = () => {
+    qrModal.classList.remove('open');
+    qrOverlay.classList.remove('open');
+  };
+  qrOverlay.onclick = () => {
+    qrModal.classList.remove('open');
+    qrOverlay.classList.remove('open');
+  };
+}
+
+// ── Import from URL ──
+function importFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const data = params.get('import');
+  if (!data) return;
+  try {
+    const json = decodeURIComponent(escape(atob(decodeURIComponent(data))));
+    const { name, cards: rawCards } = JSON.parse(json);
+    // Check if deck with same name already exists
+    const existing = state.decks.find(d => d.name === name);
+    if (existing) {
+      // Merge: add cards that don't exist yet (by front text)
+      const existingFronts = new Set(existing.cards.map(c => c.front));
+      let added = 0;
+      for (const [front, back] of rawCards) {
+        if (!existingFronts.has(front)) {
+          existing.cards.push({ id: uid(), front, back });
+          added++;
+        }
+      }
+      state.currentDeckId = existing.id;
+      save(); renderDecks(); renderCards(); showView('cards');
+      showToast(added > 0 ? `Added ${added} new cards to "${name}"` : `"${name}" is already up to date`);
+    } else {
+      const cards = rawCards.map(([front, back]) => ({ id: uid(), front, back }));
+      const deck = { id: uid(), name, cards };
+      state.decks.push(deck);
+      state.currentDeckId = deck.id;
+      save(); renderDecks(); renderCards(); showView('cards');
+      showToast(`Imported ${cards.length} cards into "${name}"`);
+    }
+  } catch {
+    showToast('Invalid import link');
+  }
+  // Clean URL
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+// ── Toast notification ──
+function showToast(msg) {
+  let toast = $('#toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
 // ── Long-press deck name to edit ──
 function setupDeckLongPress() {
   headerTitle.addEventListener('click', () => {
@@ -366,8 +509,16 @@ function init() {
   $('#btn-prev').onclick = studyPrev;
   $('#btn-shuffle').onclick = studyShuffle;
 
+  $('#btn-import-csv').onclick = importCSVFile;
+  $('#btn-import-empty').onclick = importCSVFile;
+  $('#btn-share-deck').onclick = shareDeck;
+  $('#menu-import-csv').onclick = () => { closeMenu(); importCSVFile(); };
+
   setupSwipe();
   setupDeckLongPress();
+
+  // Import from URL if present
+  importFromURL();
 
   // Back navigation
   window.addEventListener('popstate', () => {

@@ -1,9 +1,10 @@
-const CACHE_NAME = 'flashcards-v1';
+const CACHE_NAME = 'flashcards-v2';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './qr.js',
   './manifest.json',
   './icons/icon.svg',
 ];

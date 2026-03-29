@@ -255,6 +255,47 @@ header h1 { font-size: 1.15rem; font-weight: 600; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .view.active { animation: fadeIn .25s ease; }
 
+/* ── Cards toolbar (import/share) ── */
+#cards-toolbar {
+  display: flex; gap: 12px;
+  position: fixed;
+  bottom: calc(24px + var(--safe-bottom));
+  left: 20px;
+  z-index: 50;
+}
+
+/* ── QR modal ── */
+#qr-container {
+  display: flex; justify-content: center;
+  margin: 16px 0;
+}
+#qr-container svg { max-width: 260px; width: 100%; height: auto; }
+
+#qr-instructions {
+  font-size: .9rem; color: var(--text-light);
+  margin-bottom: 8px;
+}
+
+#qr-link-box {
+  display: flex; gap: 8px; margin-top: 8px;
+}
+#qr-link {
+  flex: 1; padding: 10px 12px; border: 2px solid #dfe6e9;
+  border-radius: 10px; font-size: .85rem; font-family: inherit;
+  outline: none; background: var(--bg); color: var(--text);
+}
+#btn-copy-link { padding: 10px 16px; font-size: .85rem; white-space: nowrap; }
+
+/* ── Import success toast ── */
+#toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  background: #2d3436; color: #fff; padding: 12px 24px;
+  border-radius: 10px; font-size: .95rem; z-index: 400;
+  opacity: 0; transition: opacity .3s;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; }
+
 /* ── Landscape adjustments ── */
 @media (min-width: 600px) {
   .view { max-width: 500px; margin: 0 auto; }
