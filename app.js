@@ -631,7 +631,7 @@ function init() {
 
   // Deck list buttons
   $('#btn-create-deck').onclick = () => openCreator();
-  $('#btn-import-deck').onclick = () => promptImport();
+  $('#btn-import-deck').onclick = () => openScanner();
   $('#btn-create-fab').onclick = () => openCreator();
   $('#btn-scan-fab').onclick = () => openScanner();
 
@@ -646,7 +646,7 @@ function init() {
 
   // Side menu
   $('#menu-create-deck').onclick = () => { closeMenu(); openCreator(); };
-  $('#menu-import-deck').onclick = () => { closeMenu(); promptImport(); };
+  $('#menu-import-deck').onclick = () => { closeMenu(); openScanner(); };
 
   // Study
   btnStudy.onclick = startStudy;
