@@ -2295,28 +2295,3 @@ var qrcode = function() {
 }(function () {
     return qrcode;
 }));
-
-// SVG wrapper matching the app's QR.toSVG(text, moduleSize, margin) API
-const QR = {
-  toSVG(text, moduleSize, margin) {
-    if (typeof moduleSize === 'undefined') moduleSize = 4;
-    if (typeof margin === 'undefined') margin = 4;
-    // Auto-detect best version (type number 0 = auto), EC level L
-    var qr = qrcode(0, 'L');
-    qr.addData(text);
-    qr.make();
-    var count = qr.getModuleCount();
-    var totalSize = count * moduleSize + margin * 2;
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + totalSize + ' ' + totalSize + '" width="' + totalSize + '" height="' + totalSize + '" shape-rendering="crispEdges">';
-    svg += '<rect width="' + totalSize + '" height="' + totalSize + '" fill="white"/>';
-    for (var r = 0; r < count; r++) {
-      for (var c = 0; c < count; c++) {
-        if (qr.isDark(r, c)) {
-          svg += '<rect x="' + (margin + c * moduleSize) + '" y="' + (margin + r * moduleSize) + '" width="' + moduleSize + '" height="' + moduleSize + '" fill="black"/>';
-        }
-      }
-    }
-    svg += '</svg>';
-    return svg;
-  }
-};

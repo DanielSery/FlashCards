@@ -5,39 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#7c3aed">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Simple flashcard app for studying on the go">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <title>FlashCards</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Header -->
   <header id="header">
     <button id="btn-menu" class="icon-btn" aria-label="Menu">&#9776;</button>
     <h1 id="header-title">FlashCards</h1>
-    <button id="btn-add" class="icon-btn" aria-label="Add card">&#43;</button>
+    <button id="btn-add" class="icon-btn" aria-label="Add">&#43;</button>
   </header>
 
-  <!-- Deck list view -->
   <section id="view-decks" class="view active">
     <div class="empty-state" id="empty-decks">
       <p>No decks yet</p>
-      <button id="btn-create-deck" class="btn-primary desktop-only">Create a deck</button>
-      <button id="btn-create-deck-mobile" class="btn-primary mobile-only">Create a deck</button>
+      <div class="empty-actions">
+        <button id="btn-create-deck" class="btn-primary">Create a deck</button>
+        <button id="btn-receive-empty" class="btn-secondary">Receive decks</button>
+      </div>
     </div>
     <ul id="deck-list" class="card-list"></ul>
     <div id="deck-fabs">
-      <button id="btn-scan-fab" class="btn-primary btn-fab-circle" aria-label="Scan QR">
+      <button id="btn-receive-fab" class="btn-primary btn-fab-circle" aria-label="Receive decks" title="Receive decks">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
       </button>
-      <button id="btn-create-fab" class="btn-primary btn-fab-circle btn-fab-large" aria-label="Create Deck">&#43;</button>
+      <button id="btn-create-fab" class="btn-primary btn-fab-circle btn-fab-large" aria-label="Create deck" title="Create deck">&#43;</button>
     </div>
   </section>
 
-  <!-- Study view -->
   <section id="view-study" class="view">
     <div id="study-progress">
       <span id="study-counter">0 / 0</span>
@@ -48,12 +49,8 @@
       <div id="swipe-hint-right" class="swipe-hint swipe-hint-right">&#10003;</div>
       <div id="flashcard" class="flashcard">
         <div class="flashcard-inner">
-          <div class="flashcard-front">
-            <p id="card-front-text"></p>
-          </div>
-          <div class="flashcard-back">
-            <p id="card-back-text"></p>
-          </div>
+          <div class="flashcard-front"><p id="card-front-text"></p></div>
+          <div class="flashcard-back"><p id="card-back-text"></p></div>
         </div>
       </div>
       <p id="tap-hint">Tap to flip &middot; Swipe to answer</p>
@@ -63,41 +60,48 @@
       <button class="side-btn" data-side="back">Back first</button>
       <button class="side-btn" data-side="random">Random</button>
     </div>
-    <!-- Study summary (shown at end) -->
-    <div id="study-summary" style="display:none">
+    <div id="study-summary" hidden>
       <h2>Round complete!</h2>
       <div id="summary-stats"></div>
       <div id="summary-actions"></div>
     </div>
   </section>
 
-  <!-- Card list / edit view -->
   <section id="view-cards" class="view">
+    <div id="card-search-bar" hidden>
+      <input type="search" id="card-search" placeholder="Search cards" autocomplete="off" aria-label="Search cards">
+      <span id="card-search-count"></span>
+    </div>
     <div class="empty-state" id="empty-cards">
       <p>No cards in this deck</p>
       <button id="btn-add-first-card" class="btn-primary">Add a card</button>
     </div>
+    <p id="card-search-empty" class="search-empty" hidden>No cards match your search</p>
     <ul id="card-list" class="card-list"></ul>
     <div id="cards-toolbar">
-      <button id="btn-share-deck" class="btn-round desktop-only" aria-label="Share deck" title="Share as QR">&#9741;</button>
+      <button id="btn-send-deck" class="btn-round" aria-label="Send deck" title="Send to another device">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>
+      </button>
     </div>
     <button id="btn-study" class="btn-primary btn-fab" aria-label="Study">&#9654; Study</button>
   </section>
 
-  <!-- Side menu -->
   <div id="menu-overlay" class="overlay"></div>
   <nav id="side-menu">
-    <button id="menu-home" class="btn-secondary" style="width:100%;margin-bottom:16px">Home</button>
+    <button id="menu-home" class="btn-secondary menu-wide">Home</button>
     <h2>Decks</h2>
     <ul id="menu-deck-list"></ul>
-    <button id="menu-create-deck" class="btn-primary desktop-only" style="width:100%">New Deck</button>
-    <button id="menu-create-mobile" class="btn-primary mobile-only" style="width:100%;margin-bottom:10px">New Deck</button>
-    <button id="menu-import-deck" class="btn-primary mobile-only" style="width:100%">Import Deck</button>
+    <button id="menu-create-deck" class="btn-primary menu-wide">New Deck</button>
+    <h2>Share</h2>
+    <button id="menu-send" class="btn-secondary menu-wide">Send all decks</button>
+    <button id="menu-receive" class="btn-secondary menu-wide">Receive decks</button>
+    <button id="menu-get-app" class="btn-secondary menu-wide" hidden>Get the app on your phone</button>
+    <button id="menu-install" class="btn-secondary menu-wide" hidden>Install app</button>
   </nav>
 
-  <!-- Modal for editing single card -->
-  <div id="modal-overlay" class="overlay"></div>
-  <div id="modal" class="modal">
+  <div id="sheet-overlay" class="overlay"></div>
+
+  <div id="modal" class="modal" role="dialog" aria-labelledby="modal-title">
     <h2 id="modal-title">Add Card</h2>
     <form id="modal-form">
       <label id="label-front" for="input-front">Front</label>
@@ -112,9 +116,7 @@
     </form>
   </div>
 
-  <!-- Deck creator (PC: text field + QR) -->
-  <div id="creator-overlay" class="overlay"></div>
-  <div id="creator-modal" class="modal">
+  <div id="creator-modal" class="modal" role="dialog" aria-labelledby="creator-title">
     <h2 id="creator-title">Create Deck</h2>
     <form id="creator-form">
       <label for="creator-name">Deck Name</label>
@@ -124,57 +126,107 @@
       <div id="creator-preview-count"></div>
       <div class="modal-actions">
         <button type="button" id="btn-creator-cancel" class="btn-secondary">Cancel</button>
-        <button type="submit" id="btn-creator-save" class="btn-primary">Create & Share QR</button>
+        <button type="submit" id="btn-creator-save" class="btn-secondary">Create</button>
+        <button type="submit" id="btn-creator-send" class="btn-primary">Create &amp; Send</button>
       </div>
     </form>
-    <!-- QR appears here after creation -->
-    <div id="creator-qr-section" style="display:none">
-      <hr style="margin:20px 0;border:none;border-top:1px solid #dfe6e9">
-      <h3 style="font-size:1rem;margin-bottom:8px">Scan on mobile to import</h3>
-      <div id="creator-qr-container"></div>
-      <div id="creator-link-box">
-        <input type="text" id="creator-link" readonly>
-        <button type="button" id="btn-creator-copy" class="btn-primary">Copy</button>
-      </div>
-      <div class="modal-actions" style="margin-top:12px">
-        <button type="button" id="btn-creator-done" class="btn-primary">Done</button>
-      </div>
+  </div>
+
+  <div id="send-modal" class="modal" role="dialog" aria-labelledby="send-title">
+    <h2 id="send-title">Send</h2>
+    <label for="send-deck">What to send</label>
+    <select id="send-deck"></select>
+    <div id="send-qr-wrap"><canvas id="send-qr" aria-label="Animated QR code"></canvas></div>
+    <p id="send-status" class="status-line"></p>
+    <p class="hint-text">On the other device open FlashCards, tap <strong>Receive</strong> and point the camera at this code until it finishes.</p>
+    <div class="segmented" id="send-mode" role="group" aria-label="Code size">
+      <button type="button" data-mode="easy">Large codes</button>
+      <button type="button" data-mode="normal">Normal</button>
+      <button type="button" data-mode="fast">Fast</button>
+    </div>
+    <p class="hint-text small">Camera struggling? Try <strong>Large codes</strong>. Good camera? <strong>Fast</strong> finishes sooner.</p>
+    <details id="send-get-app">
+      <summary>The other phone doesn't have the app yet?</summary>
+      <div class="plain-qr" id="send-get-app-qr"></div>
+      <p class="hint-text">Scan this with the phone's camera to open FlashCards there. Install it, then come back to this code.</p>
+    </details>
+    <div class="modal-actions">
+      <button type="button" id="btn-send-file" class="btn-secondary">Save as file</button>
+      <button type="button" id="btn-send-close" class="btn-primary">Done</button>
     </div>
   </div>
 
-  <!-- QR Scanner modal -->
-  <div id="scanner-overlay" class="overlay"></div>
-  <div id="scanner-modal" class="modal">
-    <h2>Scan QR Code</h2>
+  <div id="receive-modal" class="modal" role="dialog" aria-labelledby="receive-title">
+    <h2 id="receive-title">Receive</h2>
+    <p id="receive-ios-note" class="note" hidden>You're in Safari. Decks received here stay in Safari and won't appear in the FlashCards app on your Home Screen. <button type="button" class="btn-link" id="btn-receive-install">Install the app</button></p>
     <div id="scanner-video-wrap">
       <video id="scanner-video" playsinline autoplay muted></video>
     </div>
-    <p id="scanner-status">Point your camera at a FlashCards QR code</p>
+    <div id="receive-progress" hidden>
+      <div class="progress-track"><div id="receive-fill"></div></div>
+      <span id="receive-count"></span>
+    </div>
+    <p id="scanner-status" class="status-line">Starting camera&hellip;</p>
+    <details id="receive-link">
+      <summary>Have a share link from the old version?</summary>
+      <form id="receive-link-form" class="inline-form">
+        <input type="url" id="receive-link-input" placeholder="Paste the link" required>
+        <button type="submit" class="btn-primary">Import</button>
+      </form>
+    </details>
     <div class="modal-actions">
-      <button type="button" id="btn-scanner-paste" class="btn-secondary">Paste Link</button>
-      <button type="button" id="btn-scanner-close" class="btn-secondary">Close</button>
+      <button type="button" id="btn-receive-file" class="btn-secondary">Open file</button>
+      <button type="button" id="btn-receive-close" class="btn-primary">Close</button>
+    </div>
+    <input type="file" id="receive-file-input" accept=".json,application/json" hidden>
+  </div>
+
+  <div id="preview-modal" class="modal" role="dialog" aria-labelledby="preview-title">
+    <h2 id="preview-title">Import</h2>
+    <ul id="preview-list"></ul>
+    <p id="preview-unchanged" class="hint-text"></p>
+    <div class="modal-actions">
+      <button type="button" id="btn-preview-cancel" class="btn-secondary">Cancel</button>
+      <button type="button" id="btn-preview-apply" class="btn-primary">Apply</button>
     </div>
   </div>
 
-  <!-- QR share modal (for existing decks) -->
-  <div id="qr-overlay" class="overlay"></div>
-  <div id="qr-modal" class="modal">
-    <h2>Share Deck</h2>
-    <p id="qr-instructions">Scan this QR code on your mobile device to import the deck.</p>
-    <div id="qr-container"></div>
-    <div id="qr-link-box">
-      <input type="text" id="qr-link" readonly>
-      <button type="button" id="btn-copy-link" class="btn-primary">Copy</button>
-    </div>
-    <div class="modal-actions">
-      <button type="button" id="btn-qr-close" class="btn-secondary">Close</button>
+  <div id="install-modal" class="modal" role="dialog" aria-labelledby="install-title">
+    <h2 id="install-title">Install FlashCards</h2>
+    <p class="hint-text">Add FlashCards to your home screen. It opens full screen and works offline.</p>
+    <ol id="install-steps" class="steps"></ol>
+    <p id="install-ios-storage" class="note" hidden>On iPhone and iPad the installed app keeps its own decks, separate from Safari. Install first, then receive your decks inside the app.</p>
+    <p id="install-ios-move" class="note" hidden>To take the decks you have here along: tap <strong>Send all decks</strong> &rarr; <strong>Save as file</strong> here in Safari, then in the app tap <strong>Receive</strong> &rarr; <strong>Open file</strong>.</p>
+    <div class="modal-actions wrap">
+      <button type="button" id="btn-install-never" class="btn-text">Don't ask again</button>
+      <button type="button" id="btn-install-later" class="btn-secondary">Not now</button>
+      <button type="button" id="btn-install-go" class="btn-primary" hidden>Install</button>
     </div>
   </div>
 
-  <!-- Toast notification -->
-  <div id="toast"></div>
+  <div id="ios-import-modal" class="modal" role="dialog" aria-labelledby="ios-import-title">
+    <h2 id="ios-import-title">Open this deck in the app</h2>
+    <p class="hint-text">On iPhone and iPad, the FlashCards app on your Home Screen keeps its own decks, separate from Safari. A deck imported here in Safari won't show up in the app.</p>
+    <ol id="ios-import-steps" class="steps"></ol>
+    <div class="modal-actions wrap">
+      <button type="button" id="btn-ios-import-browser" class="btn-secondary">Import into Safari</button>
+      <button type="button" id="btn-ios-import-app" class="btn-primary">Use the app</button>
+    </div>
+  </div>
 
-  <script src="qr.js"></script>
-  <script src="app.js"></script>
+  <div id="get-app-modal" class="modal" role="dialog" aria-labelledby="get-app-title">
+    <h2 id="get-app-title">Get the app on your phone</h2>
+    <div class="plain-qr" id="get-app-qr"></div>
+    <p class="hint-text">Scan this with your phone's camera and open the link. FlashCards offers to install itself; then tap <strong>Receive</strong> in the app to get your decks from here.</p>
+    <p id="get-app-url" class="url-text"></p>
+    <div class="modal-actions">
+      <button type="button" id="btn-get-app-close" class="btn-primary">Done</button>
+    </div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="vendor/qrcode-generator.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
