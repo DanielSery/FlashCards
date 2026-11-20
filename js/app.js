@@ -220,9 +220,12 @@ function showStudyCard() {
   $('#progress-fill').style.width = `${((state.studyIndex + 1) / total) * 100}%`;
 }
 
+let studyAnswering = false;
+
 function studyAnswer(known) {
   const id = state.studyOrder[state.studyIndex];
-  if (!id) return;
+  if (!id || studyAnswering) return;
+  studyAnswering = true;
   (known ? state.studyKnown : state.studyUnknown).push(id);
 
   const dir = known ? 1 : -1;
@@ -231,6 +234,7 @@ function studyAnswer(known) {
   flashcard.style.opacity = '0';
 
   setTimeout(() => {
+    studyAnswering = false;
     flashcard.style.transition = '';
     if (state.studyIndex < state.studyOrder.length - 1) {
       state.studyIndex++;
