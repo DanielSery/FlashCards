@@ -6,7 +6,6 @@ function fileName(label) {
   return `FlashCards - ${safe} - ${new Date().toISOString().slice(0, 10)}.json`;
 }
 
-// Mobile: the share sheet (Save to Files, AirDrop, mail...) where it accepts the file; otherwise a download.
 export async function saveDeckFile(envelope, label) {
   const file = new File([JSON.stringify(envelope)], fileName(label), { type: 'application/json' });
   if (isMobileDevice() && navigator.canShare?.({ files: [file] })) {

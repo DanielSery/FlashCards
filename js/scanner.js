@@ -1,5 +1,3 @@
-// Camera QR scanner. BarcodeDetector where the platform has it (Android Chrome, macOS Chrome);
-// elsewhere (iOS, Windows, Firefox) the vendored jsQR in a worker.
 const MAX_DECODE_SIZE = 720;
 
 async function nativeDetector() {
@@ -10,6 +8,7 @@ async function nativeDetector() {
     const detector = new BarcodeDetector({ formats: ['qr_code'] });
     return {
       name: 'native',
+      failed: false,
       async detect(video) {
         const codes = await detector.detect(video);
         return codes.map(c => c.rawValue);
@@ -26,15 +25,26 @@ function workerDetector() {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   let nextId = 0;
+  let failure = null;
   const pending = new Map();
   worker.onmessage = e => {
-    const resolve = pending.get(e.data.id);
+    const request = pending.get(e.data.id);
     pending.delete(e.data.id);
-    if (resolve) resolve(e.data.text ? [e.data.text] : []);
+    if (request) request.resolve(e.data.text ? [e.data.text] : []);
+  };
+  // The worker script or jsQR failed to load: no reply will ever come.
+  worker.onerror = () => {
+    failure = new Error('The code reader could not start.');
+    for (const request of pending.values()) request.reject(failure);
+    pending.clear();
   };
   return {
     name: 'jsQR',
+    get failed() {
+      return failure !== null;
+    },
     detect(video) {
+      if (failure) return Promise.reject(failure);
       // The viewfinder shows the centre square of the video (object-fit: cover), so decode just that.
       const vw = video.videoWidth;
       const vh = video.videoHeight;
@@ -44,20 +54,20 @@ function workerDetector() {
       ctx.drawImage(video, (vw - side) / 2, (vh - side) / 2, side, side, 0, 0, size, size);
       const { data } = ctx.getImageData(0, 0, size, size);
       const id = nextId++;
-      return new Promise(resolve => {
-        pending.set(id, resolve);
+      return new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject });
         worker.postMessage({ id, buffer: data.buffer, width: size, height: size }, [data.buffer]);
       });
     },
     close() {
       worker.terminate();
-      for (const resolve of pending.values()) resolve([]);
+      for (const request of pending.values()) request.resolve([]);
       pending.clear();
     },
   };
 }
 
-export async function startScanner(video, onText) {
+export async function startScanner(video, onText, onFail) {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser has no camera access.');
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: false,
@@ -91,7 +101,13 @@ export async function startScanner(video, onText) {
       try {
         const texts = await detector.detect(video);
         if (running) texts.forEach(onText);
-      } catch { /* a frame that cannot be read */ }
+      } catch (err) {
+        if (detector.failed) {
+          stop();
+          onFail(err);
+          return;
+        }
+      }
     }
     if (running) nextFrame(loop);
   };

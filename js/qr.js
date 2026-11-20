@@ -1,4 +1,4 @@
-// Wraps the vendored qrcode-generator (global `qrcode`, loaded by a classic script tag).
+// `qrcode` is a global from the classic script tag in index.html, not an import.
 const QUIET = 4;
 
 export function makeMatrix(text, { version = 0, ecLevel = 'M', mode = 'Byte' } = {}) {

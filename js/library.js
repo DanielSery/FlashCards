@@ -6,8 +6,7 @@ const byCreated = (a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.i
 // A local edit must win over anything this device has already seen, even with a clock that runs behind.
 const stamp = previous => Math.max(Date.now(), previous + 1);
 
-// In-memory view of the IndexedDB data. Every change updates memory at once and writes only the
-// records it touched. deck.cards holds the live cards in order, deck.tombstones the deleted ones.
+// deck.cards holds the live cards in creation order, deck.tombstones the deleted ones.
 export class Library {
   constructor(store, onSaveError) {
     this.store = store;
@@ -70,9 +69,9 @@ export class Library {
 
   // The deck tombstone stands for its cards, so the cards themselves are dropped.
   deleteDeck(deck) {
-    const latest = deck.cards.reduce((m, c) => Math.max(m, c.updatedAt), deck.updatedAt);
-    deck.deletedAt = stamp(latest);
-    const cardDeletes = [...deck.cards, ...deck.tombstones].map(c => c.id);
+    const allCards = [...deck.cards, ...deck.tombstones];
+    deck.deletedAt = stamp(allCards.reduce((m, c) => Math.max(m, c.updatedAt), deck.updatedAt));
+    const cardDeletes = allCards.map(c => c.id);
     deck.cards = [];
     deck.tombstones = [];
     this.save({ deckPuts: [deckRecord(deck)], cardDeletes });

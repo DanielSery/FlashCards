@@ -177,6 +177,23 @@ test('a deck deleted here comes back when the other device changed it later', as
   assert.equal(b.deck(deckId).cards.length, 2);
 });
 
+test('a deck deletion propagates past a card deletion stamped by a clock that runs ahead', async () => {
+  // Arrange
+  const { a, b, deckId } = await pairWithDeck([{ front: 'hola', back: 'hello' }, { front: 'adiós', back: 'bye' }]);
+  clock.advance(10 * 60_000);
+  b.deleteCard(b.deck(deckId), b.deck(deckId).cards[0]);
+  await sync(b, a);
+  clock.advance(-9 * 60_000);
+  a.deleteDeck(a.deck(deckId));
+
+  // Act
+  const plan = await sync(a, b);
+
+  // Assert
+  assert.deepEqual(plan.changes.map(c => [c.kind, c.removed]), [['deleted', 1]]);
+  assert.equal(b.deck(deckId), null);
+});
+
 test('a v1 share link adds new fronts to the same-named deck without duplicates', async () => {
   // Arrange
   const b = await device(v1Seed('b', [['hola', 'hello']]));
