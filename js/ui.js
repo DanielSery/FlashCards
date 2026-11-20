@@ -69,13 +69,20 @@ export function handleSheetPopState() {
 }
 
 let wakeLock = null;
+let wakeLockPending = false;
 let wantAwake = false;
 
 export async function keepScreenOn(on) {
   wantAwake = on;
   try {
-    if (on && !wakeLock && 'wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
+    if (on && !wakeLock && !wakeLockPending && 'wakeLock' in navigator) {
+      wakeLockPending = true;
+      const lock = await navigator.wakeLock.request('screen').finally(() => { wakeLockPending = false; });
+      if (!wantAwake) {
+        await lock.release();
+        return;
+      }
+      wakeLock = lock;
       wakeLock.addEventListener('release', () => { wakeLock = null; });
     } else if (!on && wakeLock) {
       await wakeLock.release();

@@ -61,7 +61,6 @@ function appUrl() {
   return location.origin + location.pathname;
 }
 
-// ── Views ──
 let currentView = 'decks';
 
 function applyView(name) {
@@ -99,7 +98,6 @@ function openDeck(id) {
   showView('cards');
 }
 
-// ── Deck list ──
 const DELETE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
 
 function renderDecks() {
@@ -138,7 +136,6 @@ function renderDecks() {
   }
 }
 
-// ── Card list ──
 const cardList = new CardList($('#card-list'), {
   onEdit: card => openCardModal(card),
   onAdd: () => openCardModal(),
@@ -166,7 +163,6 @@ searchInput.addEventListener('input', () => {
   searchTimer = setTimeout(renderCards, 120);
 });
 
-// ── Study ──
 function studyCard(id) {
   return currentDeck()?.cards.find(c => c.id === id) || null;
 }
@@ -224,9 +220,12 @@ function showStudyCard() {
   $('#progress-fill').style.width = `${((state.studyIndex + 1) / total) * 100}%`;
 }
 
+let studyAnswering = false;
+
 function studyAnswer(known) {
   const id = state.studyOrder[state.studyIndex];
-  if (!id) return;
+  if (!id || studyAnswering) return;
+  studyAnswering = true;
   (known ? state.studyKnown : state.studyUnknown).push(id);
 
   const dir = known ? 1 : -1;
@@ -235,6 +234,7 @@ function studyAnswer(known) {
   flashcard.style.opacity = '0';
 
   setTimeout(() => {
+    studyAnswering = false;
     flashcard.style.transition = '';
     if (state.studyIndex < state.studyOrder.length - 1) {
       state.studyIndex++;
@@ -279,7 +279,6 @@ function showStudySummary() {
   button('btn-secondary', 'Done', () => showView('cards'));
 }
 
-// ── Single card / deck name modal ──
 let modalMode = null;
 let editTarget = null;
 const inputFront = $('#input-front');
@@ -365,7 +364,6 @@ function handleModalDelete() {
   }
 }
 
-// ── Deck creator (bulk "front, back" lines) ──
 function openCreateDeck() {
   if (isNarrow()) openNameModal('deck-new');
   else openCreator();
@@ -429,7 +427,6 @@ function parseCSVLine(line) {
   return result;
 }
 
-// ── Send ──
 let sender = null;
 let sendToken = 0;
 let sendEnvelope = null;
@@ -498,12 +495,13 @@ async function sendAsFile() {
   if (result === 'downloaded') showToast('File saved to your downloads');
 }
 
-// ── Receive ──
 let scanner = null;
+let receiveToken = 0;
 let collector = null;
 let unpacking = false;
 
 async function openReceive() {
+  const token = ++receiveToken;
   collector = new FrameCollector();
   unpacking = false;
   $('#receive-progress').hidden = true;
@@ -515,15 +513,17 @@ async function openReceive() {
   openSheet('receive-modal', { onClose: stopReceive });
   keepScreenOn(true);
   try {
-    const s = await startScanner($('#scanner-video'), onScanText);
-    if (!isSheetOpen('receive-modal')) {
+    const s = await startScanner($('#scanner-video'), onScanText, () => {
+      if (token === receiveToken) status.textContent = 'The code reader could not start. Open a deck file instead.';
+    });
+    if (token !== receiveToken || !isSheetOpen('receive-modal')) {
       s.stop();
       return;
     }
     scanner = s;
     status.textContent = 'Point the camera at the code on the other device';
   } catch (err) {
-    if (!isSheetOpen('receive-modal')) return;
+    if (token !== receiveToken || !isSheetOpen('receive-modal')) return;
     status.textContent = err?.name === 'NotAllowedError'
       ? 'Camera access was blocked. Allow it in the browser settings, or open a deck file instead.'
       : err?.name === 'NotFoundError'
@@ -533,6 +533,7 @@ async function openReceive() {
 }
 
 function stopReceive() {
+  receiveToken++;
   if (scanner) scanner.stop();
   scanner = null;
   keepScreenOn(false);
@@ -600,7 +601,6 @@ async function openFile(file) {
   else showPreview(incoming);
 }
 
-// ── Import preview ──
 let previewPlan = null;
 let previewAfterShareLink = false;
 
@@ -663,14 +663,15 @@ async function applyPreview() {
   if (afterShareLink) maybeAskToInstall({ afterShareLink });
 }
 
-// library.load() replaced every deck and card object, and a deck may have taken the sender's id.
+// library.load() replaced every deck and card object, so a hidden card list must re-render too,
+// and the open deck may have taken the sender's id.
 function refreshAfterImport() {
   if (state.currentDeckId && !currentDeck()) {
     state.currentDeckId = null;
     if (currentView !== 'decks') applyView('decks');
   }
   renderDecks();
-  if (currentView === 'cards') renderCards();
+  renderCards();
 }
 
 async function cancelPreview() {
@@ -679,7 +680,6 @@ async function cancelPreview() {
   if (afterShareLink) maybeAskToInstall({ afterShareLink });
 }
 
-// ── Install ──
 let installActed = false;
 
 const IOS_STEPS = [
@@ -767,7 +767,6 @@ function updateMenuItems() {
   $('#menu-install').hidden = !install.installMethod();
 }
 
-// ── Side menu ──
 function openMenu() {
   sideMenu.classList.add('open');
   menuOverlay.classList.add('open');
@@ -787,7 +786,6 @@ function fromMenu(fn) {
   };
 }
 
-// ── Swipe (drag the study card left or right) ──
 let swipeDragging = false;
 let swipeStartX = 0;
 let swipeDx = 0;
@@ -832,7 +830,6 @@ function setupSwipe() {
   document.addEventListener('mouseup', onEnd);
 }
 
-// ── Wiring ──
 function wireEvents() {
   $('#btn-menu').onclick = openMenu;
   menuOverlay.onclick = closeMenu;

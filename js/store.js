@@ -54,7 +54,7 @@ class Store {
   }
 
   // Deletes run before puts, so a record can move to a new id in one call.
-  write({ deckPuts = [], deckDeletes = [], cardPuts = [], cardDeletes = [], meta = {} }) {
+  async write({ deckPuts = [], deckDeletes = [], cardPuts = [], cardDeletes = [], meta = {} }) {
     const tx = this.db.transaction(['decks', 'cards', 'meta'], 'readwrite');
     const decks = tx.objectStore('decks');
     const cards = tx.objectStore('cards');
